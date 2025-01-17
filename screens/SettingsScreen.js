@@ -7,7 +7,7 @@ import XLSX from 'xlsx';
 import * as DocumentPicker from 'expo-document-picker';
 import { collection, getDocs, writeBatch, doc, Timestamp } from 'firebase/firestore'; // Importa correctamente writeBatch
 
-// Función para convertir ArrayBuffer a base64
+// Función para convertir ArrayBuffer a base64//
 const arrayBufferToBase64 = (buffer) => {
   let binary = '';
   const bytes = new Uint8Array(buffer);
