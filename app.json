@@ -19,10 +19,21 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "MANAGE_EXTERNAL_STORAGE" 
+      ],
+      "package": "com.sebasdac.AsistenciaIBBAC2"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "06d1bfa1-4542-4919-bf0f-81f4b5fcde69"
+      }
     }
   }
 }
