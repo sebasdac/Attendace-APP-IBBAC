@@ -12,9 +12,14 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    
+    "backgroundFetch": {
+      "isEnabled": true
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "backgroundFetch": {
+        "isEnabled": true
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -24,7 +29,9 @@
       "permissions": [
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
-        "MANAGE_EXTERNAL_STORAGE" 
+        "MANAGE_EXTERNAL_STORAGE", 
+        "ACCESS_BACKGROUND_LOCATION", 
+        "FOREGROUND_SERVICE"
       ],
       "package": "com.sebasdac.AsistenciaIBBAC2"
     },

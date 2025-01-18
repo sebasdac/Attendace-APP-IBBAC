@@ -6,8 +6,14 @@ import { NavigationContainer } from '@react-navigation/native';
 import BirthdayNotification from './components/BirthdayNotification';
 import NotificationTest from './components/NotificationTest';
 import * as Notifications from 'expo-notifications';
+import { checkBackgroundStatus, registerBirthdayTask } from './utils/backgroundFetch';
 
 export default function App() {
+  useEffect(() => {
+    // Registrar la tarea de verificación de cumpleaños
+    registerBirthdayTask();
+   
+  }, []);
 
   return (
     
