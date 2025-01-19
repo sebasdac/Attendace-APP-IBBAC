@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Button, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, Button, StyleSheet, Alert, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { useNavigation } from '@react-navigation/native';
 
@@ -7,6 +7,7 @@ export default function AttendanceSelectScreen() {
   const navigation = useNavigation();
   const [selectedDate, setSelectedDate] = useState('');
   const [session, setSession] = useState('');
+  const [loading, setLoading] = useState(false);  // Estado para el indicador de carga
 
   const handleDateSelect = (date) => {
     setSelectedDate(date.dateString);
@@ -21,7 +22,15 @@ export default function AttendanceSelectScreen() {
       Alert.alert('Error', 'Por favor, selecciona una fecha y una sesión.');
       return;
     }
-    navigation.navigate('AttendanceListScreen', { date: selectedDate, session });
+    
+    // Inicia el indicador de carga
+    setLoading(true);
+    
+    // Simula un retraso para mostrar el indicador de carga
+    setTimeout(() => {
+      setLoading(false);  // Detiene el indicador de carga
+      navigation.navigate('AttendanceListScreen', { date: selectedDate, session });
+    }, 2000);  // 2 segundos de retraso simulado
   };
 
   return (
@@ -31,7 +40,6 @@ export default function AttendanceSelectScreen() {
       <Calendar
         markedDates={{ [selectedDate]: { selected: true, selectedColor: '#007bff', selectedTextColor: 'white' } }}
         onDayPress={handleDateSelect}
-        //minDate={new Date().toISOString().split('T')[0]}
         monthFormat={'yyyy MM'}
         hideExtraDays
         markingType={'simple'}
@@ -56,8 +64,12 @@ export default function AttendanceSelectScreen() {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.saveButton} onPress={handleSaveAttendance}>
-        <Text style={styles.saveButtonText}>Guardar Asistencia</Text>
+      <TouchableOpacity style={styles.saveButton} onPress={handleSaveAttendance} disabled={loading}>
+        {loading ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : (
+          <Text style={styles.saveButtonText}>Guardar Asistencia</Text>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -110,7 +122,7 @@ const styles = StyleSheet.create({
   },
   selectedSession: {
     backgroundColor: '#007bff',
-    opacity:0.5,
+    opacity: 0.5,
   },
   sessionText: {
     fontSize: 18,

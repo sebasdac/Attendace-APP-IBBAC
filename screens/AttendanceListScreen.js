@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, Switch, Button, TextInput } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Switch, Button, TextInput, ActivityIndicator } from 'react-native';
 import { db } from '../database/firebase';
 import { getDocs, collection, addDoc, query, where, getDoc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 
@@ -8,6 +8,7 @@ export default function AttendanceListScreen({ route }) {
   const [people, setPeople] = useState([]);
   const [attendance, setAttendance] = useState({});
   const [searchText, setSearchText] = useState('');
+  const [loading, setLoading] = useState(false);  // Estado para el indicador de carga
 
   // Función para cargar personas desde Firestore
   const fetchPeople = async () => {
@@ -48,71 +49,67 @@ export default function AttendanceListScreen({ route }) {
   }, []);
 
   // Manejo del cambio de asistencia (sin guardar en Firestore todavía)
-const handleAttendanceChange = (id, attended) => {
-  // Imprime el id recibido y el valor de 'attended'
-  console.log("id recibido en handleAttendanceChange:", id);
-  console.log("Valor de attended:", attended);
+  const handleAttendanceChange = (id, attended) => {
+    // Imprime el id recibido y el valor de 'attended'
+    console.log("id recibido en handleAttendanceChange:", id);
+    console.log("Valor de attended:", attended);
 
-  // Actualizamos el estado local
-  setAttendance((prev) => ({
-    ...prev,
-    [id]: attended,
-  }));
+    // Actualizamos el estado local
+    setAttendance((prev) => ({
+      ...prev,
+      [id]: attended,
+    }));
 
-  console.log("Asistencia cambiada localmente para el id:", id);
-};
+    console.log("Asistencia cambiada localmente para el id:", id);
+  };
 
-const handleSaveAttendance = async () => {
-  try {
-    // Guardamos o actualizamos la asistencia de cada persona
-    for (const personId in attendance) {
-      const attendanceRef = collection(db, 'attendance');
-      const attendanceQuery = query(
-        attendanceRef,
-        where('personId', '==', personId),
-        where('date', '==', date),
-        where('session', '==', session)
-      );
+  const handleSaveAttendance = async () => {
+    setLoading(true);  // Inicia la carga
 
-      const existingAttendance = await getDocs(attendanceQuery);
+    try {
+      // Guardamos o actualizamos la asistencia de cada persona
+      for (const personId in attendance) {
+        const attendanceRef = collection(db, 'attendance');
+        const attendanceQuery = query(
+          attendanceRef,
+          where('personId', '==', personId),
+          where('date', '==', date),
+          where('session', '==', session)
+        );
 
-      if (existingAttendance.empty) {
-        // Si no existe, añadimos un nuevo documento
-        await addDoc(attendanceRef, {
-          personId,
-          date,
-          session,
-          attended: attendance[personId],
-        });
-      } else {
-        // Si ya existe, actualizamos el primer documento encontrado
-        const doc = existingAttendance.docs[0];  // Tomamos el primer documento
-        const docRef = doc.ref;  // Referencia al documento
-        console.log("id del documento encontrado:", doc.id);  // Asegúrate de que este sea el id correcto
+        const existingAttendance = await getDocs(attendanceQuery);
 
-        // Solo actualizamos si el valor de asistencia es diferente
-        if (doc.data().attended !== attendance[personId]) {
-          await updateDoc(docRef, {
+        if (existingAttendance.empty) {
+          // Si no existe, añadimos un nuevo documento
+          await addDoc(attendanceRef, {
+            personId,
+            date,
+            session,
             attended: attendance[personId],
           });
-          console.log("Asistencia actualizada para el documento con id:", doc.id);
+        } else {
+          // Si ya existe, actualizamos el primer documento encontrado
+          const doc = existingAttendance.docs[0];  // Tomamos el primer documento
+          const docRef = doc.ref;  // Referencia al documento
+          console.log("id del documento encontrado:", doc.id);  // Asegúrate de que este sea el id correcto
+
+          // Solo actualizamos si el valor de asistencia es diferente
+          if (doc.data().attended !== attendance[personId]) {
+            await updateDoc(docRef, {
+              attended: attendance[personId],
+            });
+            console.log("Asistencia actualizada para el documento con id:", doc.id);
+          }
         }
       }
+      alert('Asistencia guardada correctamente.');
+    } catch (error) {
+      alert('Error al guardar la asistencia.');
+      console.error("Error al guardar la asistencia:", error);
+    } finally {
+      setLoading(false);  // Detiene la carga después de guardar
     }
-    alert('Asistencia guardada correctamente.');
-  } catch (error) {
-    alert('Error al guardar la asistencia.');
-    console.error("Error al guardar la asistencia:", error);
-  }
-};
-
-
-
-
-
-
-
-  
+  };
 
   // Filtrar personas según el texto de búsqueda
   const filteredPeople = people.filter((person) =>
@@ -157,12 +154,17 @@ const handleSaveAttendance = async () => {
         )}
       />
 
-      {/* Botón para guardar la asistencia */}
-      <Button title="Guardar Asistencia" onPress={handleSaveAttendance} color="#007bff" />
+      {/* Botón para guardar la asistencia o indicador de carga */}
+      <View style={styles.saveButtonContainer}>
+        {loading ? (
+          <ActivityIndicator size="large" color="#007bff" />
+        ) : (
+          <Button title="Guardar Asistencia" onPress={handleSaveAttendance} color="#007bff" />
+        )}
+      </View>
     </View>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {
@@ -173,7 +175,7 @@ const styles = StyleSheet.create({
   },
   header: {
     fontSize: 24,
-    marginTop:30,
+    marginTop: 30,
     fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'center',
@@ -210,5 +212,9 @@ const styles = StyleSheet.create({
   attendanceStatus: {
     fontSize: 16,
     color: '#777',
+  },
+  saveButtonContainer: {
+    marginTop: 20,
+    alignItems: 'center',
   },
 });
