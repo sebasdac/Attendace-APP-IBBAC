@@ -7,6 +7,8 @@ import AttendanceSelectScreen from '../screens/AttendanceSelectScreen';
 import AttendanceStackNavigator from './AttendanceStackNavigator'; // Asegúrate de que el StackNavigator esté en un archivo separado
 import SettingsScreen from '../screens/SettingsScreen';
 import AttendanceReportScreen from '../screens/ReportScreen';
+import AttendanceReport from '../screens/AttendanceSelectScreen';
+import ReportStackNavigation from './ReportStackNavigation';
 
 const Tab = createBottomTabNavigator();
 
@@ -33,7 +35,7 @@ export default function BottomTabs() {
         headerShown: false,
       })}
     >
-      <Tab.Screen name="Registro" component={AttendanceScreen} />
+      <Tab.Screen name="Registro" component={ReportStackNavigation} />
       <Tab.Screen name="Reportes" component={AttendanceReportScreen} />
       <Tab.Screen name="Asistencia" component={AttendanceStackNavigator} />
       <Tab.Screen name="Ajustes" component={SettingsScreen}/>

@@ -3,6 +3,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import AttendanceSelectScreen from '../screens/AttendanceSelectScreen';
 import AttendanceListScreen from '../screens/AttendanceListScreen';
 
+
 const Stack = createStackNavigator();
 
 export default function AttendanceStackNavigator() {
@@ -10,6 +11,7 @@ export default function AttendanceStackNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="AttendanceSelect" component={AttendanceSelectScreen} />
       <Stack.Screen name="AttendanceListScreen" component={AttendanceListScreen} />
+     
     </Stack.Navigator>
   );
 }

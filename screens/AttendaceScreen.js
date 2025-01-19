@@ -9,6 +9,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
 
 export default function AttendanceScreen() {
+  const navigation = useNavigation();// navegacion
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [birthDay, setBirthDay] = useState('');  
@@ -183,7 +184,9 @@ export default function AttendanceScreen() {
     // Actualizar el estado con el texto formateado
     setBirthDay(finalText);
   };
-  
+  const handleViewAttendance = (personId) => {
+    navigation.navigate('AttendanceReport', { personId }); // Navega a la pantalla del reporte
+  };
 
   useFocusEffect(
     React.useCallback(() => {
@@ -263,6 +266,10 @@ export default function AttendanceScreen() {
                   <TouchableOpacity style={styles.optionButton} onPress={() => deletePerson(item.id)}>
                     <Text style={styles.optionText}>Eliminar</Text>
                   </TouchableOpacity>
+                  <TouchableOpacity style={styles.optionButton} onPress={() => handleViewAttendance(item.id)}>
+                    <Text style={styles.optionText}>Ver Asistencia</Text>
+                  </TouchableOpacity>
+                  
                 </View>
               </View>
             )}
@@ -307,7 +314,7 @@ const styles = StyleSheet.create({
       fontWeight: 'bold',
     },
     listContainer: {
-      flex: 10,
+      flex: 15,
       marginTop: 20,
       padding: 10,
       borderTopWidth: 1,
@@ -354,19 +361,25 @@ const styles = StyleSheet.create({
       paddingVertical: 5,
     },
     optionButton: {
-      padding: 8,
-      backgroundColor: '#007bff',
-      borderRadius: 5,
-      marginBottom: 5,
-      opacity: 0.8,  // Opacidad para hacerlos menos invasivos
+      paddingVertical: 6, // Reducir el padding para hacer los botones más pequeños
+      paddingHorizontal: 12, // Ajustar el tamaño de los botones
+      backgroundColor: '#007bff', // Cambia el color si es necesario
+      borderRadius: 20,  // Bordes redondeados
+      marginBottom: 8,
       alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row', // Para incluir el ícono y el texto
+      opacity: 0.9,  // No tan opacos, pero aún sutiles
+      elevation: 3,  // Para agregar sombra
     },
     optionText: {
       color: '#fff',
-      textAlign: 'center',
+      fontSize: 14, // Texto pequeño
       fontWeight: 'bold',
-      fontSize: 14,
+      marginLeft: 6, // Separación con el icono
     },
+    
+    
     buttonContainer: {
       marginTop: 20,
       alignItems: 'center',
