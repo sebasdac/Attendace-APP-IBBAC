@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "AsistenciaIBBAC2",
-    "slug": "AsistenciaIBBAC2",
+    "name": "AsistenciaIBBAC",
+    "slug": "ibbac",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -23,7 +23,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
       "permissions": [
@@ -36,11 +36,11 @@
       "package": "com.sebasdac.AsistenciaIBBAC2"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/icon.png"
     },
     "extra": {
       "eas": {
-        "projectId": "06d1bfa1-4542-4919-bf0f-81f4b5fcde69"
+        "projectId": "0227773e-a109-4e07-bb85-76de317888b3"
       }
     }
   }
