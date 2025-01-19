@@ -235,6 +235,9 @@ const excelDateToJSDate = (excelDate) => {
           disabled={loading}
         />
       </View>
+
+      <Text style={infoStyle}>Version : 1.0v Iglesia Biblica Bautista Agua Caliente. Attendance App</Text> 
+      
     </View>
   );
   
@@ -255,8 +258,14 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     marginBottom: 8, // Espacio entre los botones
+
   },
  
+});
+
+const infoStyle = StyleSheet.create({
+  position: 'absolute', 
+  bottom : 0,
 });
 
 

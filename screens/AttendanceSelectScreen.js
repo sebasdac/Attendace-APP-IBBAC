@@ -31,7 +31,7 @@ export default function AttendanceSelectScreen() {
       <Calendar
         markedDates={{ [selectedDate]: { selected: true, selectedColor: '#007bff', selectedTextColor: 'white' } }}
         onDayPress={handleDateSelect}
-        minDate={new Date().toISOString().split('T')[0]}
+        //minDate={new Date().toISOString().split('T')[0]}
         monthFormat={'yyyy MM'}
         hideExtraDays
         markingType={'simple'}

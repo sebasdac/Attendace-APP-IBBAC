@@ -20,7 +20,7 @@ export const registerBirthdayTask = async () => {
   try {
     console.log('Registrando tarea de cumpleaños...');
     await BackgroundFetch.registerTaskAsync('birthdayTask', {
-      minimumInterval: 900, // Intervalo de 1 minuto (en segundos)
+      minimumInterval: 43200, // Intervalo de 1 minuto (en segundos)
       stopOnTerminate: false, // Mantener la tarea activa incluso si la app se cierra
       startOnBoot: true, // Iniciar la tarea al reiniciar el dispositivo
     });

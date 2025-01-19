@@ -72,6 +72,27 @@ export default function AttendanceScreen() {
     }
   };
 
+
+  // confirmar si se quiere eliminar la persona
+  const confirmDeletePerson = (personId) => {
+    Alert.alert(
+      'Confirmar Eliminación',
+      '¿Estás seguro de que deseas eliminar esta persona?',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Eliminar',
+          onPress: () => deletePerson(personId),
+          style: 'destructive',
+        },
+      ]
+    );
+  };
+  
+
   // Función para cargar la lista de personas
   const fetchPeople = async () => {
     setLoadingPeople(true); // Inicia el indicador de carga para la lista
@@ -263,9 +284,10 @@ export default function AttendanceScreen() {
                   <TouchableOpacity style={styles.optionButton} onPress={() => editPerson(item)}>
                     <Text style={styles.optionText}>Editar</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.optionButton} onPress={() => deletePerson(item.id)}>
+                  <TouchableOpacity style={styles.optionButton} onPress={() => confirmDeletePerson(item.id)}>
                     <Text style={styles.optionText}>Eliminar</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity style={styles.optionButton} onPress={() => handleViewAttendance(item.id)}>
                     <Text style={styles.optionText}>Ver Asistencia</Text>
                   </TouchableOpacity>
@@ -315,7 +337,7 @@ const styles = StyleSheet.create({
     },
     listContainer: {
       flex: 15,
-      marginTop: 20,
+      marginTop: 5,
       padding: 10,
       borderTopWidth: 1,
       borderTopColor: '#ddd',
