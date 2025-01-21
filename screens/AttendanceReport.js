@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../database/firebase';
 import { BarChart, PieChart } from 'react-native-chart-kit';
 import { Dimensions } from 'react-native';
@@ -19,32 +19,93 @@ const AttendanceReport = ({ route }) => {
   useEffect(() => {
     const fetchAttendance = async () => {
       try {
+        // Obtener el documento 'globalSettings' desde la colección 'config'
+        const docRef = doc(db, 'config', 'globalSettings');
+        const docSnapshot = await getDoc(docRef);
+    
+        if (!docSnapshot.exists()) {
+          console.log('No se encontró el documento globalSettings');
+          return;
+        }
+    
+        const configData = docSnapshot.data();
+        const initialDateStr = configData?.initialDate;
+    
+        if (!initialDateStr) {
+          console.log('No se encontró initialDate en configuración');
+          return;
+        }
+    
+        // Parsear la fecha initialDate a formato Date (dd/mm/yyyy)
+        const [day, month, year] = initialDateStr.split('/');  // Convertimos el formato dd/mm/yyyy
+        const initialDate = new Date(`${year}-${month}-${day}`);  // Nueva fecha con formato yyyy-mm-dd
+    
+        // Obtener los registros de asistencia para la persona
         const attendanceRef = collection(db, 'attendance');
         const attendanceQuery = query(attendanceRef, where('personId', '==', personId));
-        const querySnapshot = await getDocs(attendanceQuery);
-
-        const records = querySnapshot.docs
+        const querySnapshotAttendance = await getDocs(attendanceQuery);
+    
+        const records = querySnapshotAttendance.docs
           .map((doc) => ({ id: doc.id, ...doc.data() }))
-          .filter((record) => record.attended === true);
-
+          .filter((record) => record.attended === true);  // Filtramos solo las asistencias
+    
         setAttendanceRecords(records);
-
-        const currentYear = new Date().getFullYear();
-        const startOfYear = new Date(currentYear, 0, 1);
+    
+        // Establecemos las fechas de inicio y fin para el filtro
         const today = new Date();
-
-        if (!startDate && !endDate) {
-          filterRecords(records, startOfYear, today);
-        } else {
-          filterRecords(records, startDate, endDate);
-        }
+    
+        // Si no hay fechas de filtro, usamos las predeterminadas
+        const startDateToUse = startDate ? new Date(startDate) : initialDate;
+        const endDateToUse = endDate ? new Date(endDate) : today;
+    
+        // Filtrar los registros por las fechas de inicio y fin
+        filterRecords(records, startDateToUse, endDateToUse);
+    
+        // Calcular el total de sesiones a partir de initialDate
+        calculateSessions(records, startDateToUse, endDateToUse);
+    
       } catch (error) {
         console.error('Error al obtener la asistencia:', error);
       }
     };
-
+    
+    
+    const filterRecords = (records, start, end) => {
+      if (start && end) {
+        const filtered = records.filter((record) => {
+          const recordDate = new Date(record.date);
+          return recordDate >= start && recordDate <= end;
+        });
+        
+        setFilteredRecords(filtered);
+        calculateSessions(filtered, start, end);
+      } else {
+        // Si no hay fechas definidas, simplemente mostramos todos los registros
+        setFilteredRecords(records);
+        calculateSessions(records);
+      }
+    };
+    
+    const calculateSessions = (records, start, end) => {
+      if (!start || !end) {
+        // Si no se han definido fechas, no calculamos las sesiones
+        return;
+      }
+    
+      const totalSundaysPassed = calculateTotalSundays(start, end);
+      const totalSessions = totalSundaysPassed * 2;  // Ajusta según la lógica de sesiones que necesitas
+      setTotalSundays(totalSessions);
+    
+      const attendedSessions = records.length;
+      setSundayCount(attendedSessions);
+    };
+    
+    
+    
+  
     fetchAttendance();
   }, [personId]);
+  
 
   const filterRecords = (records, start, end) => {
     if (start && end) {
@@ -52,25 +113,36 @@ const AttendanceReport = ({ route }) => {
         const recordDate = new Date(record.date);
         return recordDate >= start && recordDate <= end;
       });
-
+      
       setFilteredRecords(filtered);
       calculateSessions(filtered, start, end);
     } else {
+      // Cuando no hay fechas definidas (se usará el rango predeterminado)
       setFilteredRecords(records);
       calculateSessions(records);
     }
   };
+  
+  const parseDate = (dateString) => {
+    const [day, month, year] = dateString.split('/').map(Number);
+    return new Date(year, month - 1, day); // `month - 1` porque los meses en Date van de 0 a 11
+  };
+  
 
   const calculateSessions = (records, start, end) => {
-    if (!start || !end) return;
-
+    if (!start || !end) {
+      // Si no hay fechas definidas, no calculamos las sesiones totales por ahora
+      return;
+    }
+  
     const totalSundaysPassed = calculateTotalSundays(start, end);
     const totalSessions = totalSundaysPassed * 2;
     setTotalSundays(totalSessions);
-
+  
     const attendedSessions = records.length;
     setSundayCount(attendedSessions);
   };
+  
 
   const calculateTotalSundays = (start, end) => {
     let sundays = 0;
