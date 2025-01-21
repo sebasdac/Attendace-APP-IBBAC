@@ -11,18 +11,24 @@ export default function AttendanceListScreen({ route }) {
   const [loading, setLoading] = useState(false);  // Estado para el indicador de carga
 
   // Función para cargar personas desde Firestore
-  const fetchPeople = async () => {
-    try {
-      const snapshot = await getDocs(collection(db, 'people'));
-      const peopleList = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setPeople(peopleList);
-    } catch (error) {
-      console.error('Error al cargar personas:', error);
-    }
-  };
+const fetchPeople = async () => {
+  try {
+    const snapshot = await getDocs(collection(db, 'people'));
+    const peopleList = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    // Ordenar por nombre en orden alfabético
+    const sortedPeople = peopleList.sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+
+    setPeople(sortedPeople);
+  } catch (error) {
+    console.error('Error al cargar personas:', error);
+  }
+};
 
   // Función para verificar la asistencia de las personas ya registradas en esa fecha y sesión
   const fetchAttendance = async () => {

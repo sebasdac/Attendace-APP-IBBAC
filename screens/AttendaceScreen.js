@@ -96,21 +96,28 @@ export default function AttendanceScreen() {
   // Función para cargar la lista de personas
   const fetchPeople = async () => {
     setLoadingPeople(true); // Inicia el indicador de carga para la lista
-
+  
     try {
       const snapshot = await getDocs(collection(db, 'people'));
       const peopleList = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
-      setPeople(peopleList);
-      setFilteredPeople(peopleList); // Inicia la lista filtrada con todos los registros
+  
+      // Ordenar por nombre en orden alfabético
+      const sortedPeople = peopleList.sort((a, b) =>
+        a.name.localeCompare(b.name)
+      );
+  
+      setPeople(sortedPeople);
+      setFilteredPeople(sortedPeople); // Inicia la lista filtrada con todos los registros
     } catch (error) {
       console.error('Error al cargar personas:', error);
     } finally {
       setLoadingPeople(false); // Finaliza la carga de la lista
     }
   };
+  
 
   // Función para eliminar una persona
   const deletePerson = async (id) => {

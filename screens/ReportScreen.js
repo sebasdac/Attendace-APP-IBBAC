@@ -83,7 +83,7 @@ export default function AttendanceReportScreen() {
       <Calendar
         markedDates={{ [selectedDate]: { selected: true, selectedColor: '#007bff', selectedTextColor: 'white' } }}
         onDayPress={handleDateSelect}
-        minDate={new Date().toISOString().split('T')[0]}
+        //minDate={new Date().toISOString().split('T')[0]} sin min day
         monthFormat={'yyyy MM'}
         hideExtraDays
         markingType={'simple'}
