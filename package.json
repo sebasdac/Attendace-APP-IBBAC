@@ -39,7 +39,8 @@
     "react-native-svg": "15.8.0",
     "react-native-vector-icons": "^10.2.0",
     "react-native-view-shot": "~4.0.3",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "expo-updates": "~0.26.13"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2"
