@@ -14,6 +14,9 @@ const AttendanceReport = ({ route }) => {
   const [filteredRecords, setFilteredRecords] = useState([]);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
+  const [selectedDay, setSelectedDay] = useState(0); // 0 para domingos, 3 para miércoles
+  const [sessionsPerDay, setSessionsPerDay] = useState(2); // 2 para domingos, 1 para miércoles
+
   const [showDatePicker, setShowDatePicker] = useState({ type: null, visible: false });
 
   useEffect(() => {
