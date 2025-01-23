@@ -5,6 +5,8 @@ import { db } from '../database/firebase';
 import { BarChart, PieChart } from 'react-native-chart-kit';
 import { Dimensions } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { ScrollView } from 'react-native-gesture-handler';
 
 const AttendanceReport = ({ route }) => {
   const { personId } = route.params;
@@ -16,8 +18,39 @@ const AttendanceReport = ({ route }) => {
   const [endDate, setEndDate] = useState(null);
   const [selectedDay, setSelectedDay] = useState(0); // 0 para domingos, 3 para miércoles
   const [sessionsPerDay, setSessionsPerDay] = useState(2); // 2 para domingos, 1 para miércoles
+  const [initialDate, setInitialDate] = useState(null);
+  const [attendedSessions, setAttendedSessions] = useState([]);
+  const [visibleSessions, setVisibleSessions] = useState(4); // Mostrar 4 por defecto
+
+
 
   const [showDatePicker, setShowDatePicker] = useState({ type: null, visible: false });
+
+  useEffect(() => {
+  
+    // Carga inicial para domingo
+    const today = new Date();
+    const startDateToUse = new Date(initialDate);
+    const endDateToUse = today;
+  
+    // Filtra los registros iniciales para domingo (día 0)
+    const filteredRecords = filterByDay(attendanceRecords, 0); // 0 = domingo
+    console.log('Registros iniciales filtrados para domingo:', filteredRecords);
+  
+    setFilteredRecords(filteredRecords);
+
+
+    const attendedSessions = filteredRecords.map((record) => ({
+      date: record.date, // Fecha de la sesión
+      session: record.session, // Sesión (AM o PM)
+    }));
+    setAttendedSessions(attendedSessions);
+    
+  
+    // Calcula sesiones iniciales para domingo
+    calculateSessions(filteredRecords, startDateToUse, endDateToUse, 0, 2); // 2 sesiones por domingo
+  }, [attendanceRecords, initialDate]);
+  
 
   useEffect(() => {
     const fetchAttendance = async () => {
@@ -42,6 +75,9 @@ const AttendanceReport = ({ route }) => {
         // Parsear la fecha initialDate a formato Date (dd/mm/yyyy)
         const [day, month, year] = initialDateStr.split('/');  // Convertimos el formato dd/mm/yyyy
         const initialDate = new Date(`${year}-${month}-${day}`);  // Nueva fecha con formato yyyy-mm-dd
+
+        // Guardar initialDate en el estado
+        setInitialDate(initialDate);
     
         // Obtener los registros de asistencia para la persona
         const attendanceRef = collection(db, 'attendance');
@@ -66,6 +102,9 @@ const AttendanceReport = ({ route }) => {
     
         // Calcular el total de sesiones a partir de initialDate
         calculateSessions(records, startDateToUse, endDateToUse);
+        console.log('Configuración obtenida desde Firebase:', configData);
+        console.log('Campo initialDate:', configData.initialDate);
+        
     
       } catch (error) {
         console.error('Error al obtener la asistencia:', error);
@@ -90,18 +129,23 @@ const AttendanceReport = ({ route }) => {
     };
     
     const calculateSessions = (records, start, end) => {
-      if (!start || !end) {
-        // Si no se han definido fechas, no calculamos las sesiones
-        return;
-      }
+      if (!start || !end) return;
     
-      const totalSundaysPassed = calculateTotalSundays(start, end);
-      const totalSessions = totalSundaysPassed * 2;  // Ajusta según la lógica de sesiones que necesitas
-      setTotalSundays(totalSessions);
+      // Calcula el número de días totales (domingos o miércoles) entre start y end
+      const totalDaysPassed = calculateTotalDays(start, end, selectedDay);
     
+      // Calcula las sesiones totales en base a los días y las sesiones por día
+      const totalSessions = totalDaysPassed * sessionsPerDay;
+      setTotalSundays(totalSessions); // Actualiza las sesiones totales
+    
+      // El número de sesiones asistidas es simplemente el número de registros filtrados
       const attendedSessions = records.length;
-      setSundayCount(attendedSessions);
+      setSundayCount(attendedSessions); // Actualiza las sesiones asistidas
+    
+      console.log('Sesiones totales:', totalSessions);
+      console.log('Sesiones asistidas:', attendedSessions);
     };
+    
     
     
     
@@ -109,7 +153,12 @@ const AttendanceReport = ({ route }) => {
     fetchAttendance();
   }, [personId]);
   
+  const loadMoreSessions = () => {
+    setVisibleSessions((prev) => prev + 4); // Aumenta el número de filas visibles
+  };
+  const sessionsToDisplay = attendedSessions.slice(0, visibleSessions);
 
+  
   const filterRecords = (records, start, end) => {
     if (start && end) {
       const filtered = records.filter((record) => {
@@ -128,23 +177,48 @@ const AttendanceReport = ({ route }) => {
   
   const parseDate = (dateString) => {
     const [day, month, year] = dateString.split('/').map(Number);
-    return new Date(year, month - 1, day); // `month - 1` porque los meses en Date van de 0 a 11
+    return new Date(year, month - 1, day); // Convierte el formato dd/mm/aaaa a Date
   };
   
 
-  const calculateSessions = (records, start, end) => {
-    if (!start || !end) {
-      // Si no hay fechas definidas, no calculamos las sesiones totales por ahora
-      return;
+  const calculateSessions = (records, start, end, day, sessions) => {
+    if (!start || !end) return;
+  
+    // Calcula los días totales según el día proporcionado
+    const totalDaysPassed = calculateTotalDays(start, end, day);
+  
+    // Calcula las sesiones totales basadas en los días y las sesiones proporcionadas
+    const totalSessions = totalDaysPassed * sessions;
+  
+    // Calcula las asistencias basadas en los registros filtrados
+    const attendedSessions = records.length;
+  
+    setTotalSundays(totalSessions);
+    setSundayCount(attendedSessions);
+  
+    console.log(
+      `Cálculo actualizado: Total de días: ${totalDaysPassed}, Sesiones totales: ${totalSessions}, Sesiones asistidas: ${attendedSessions}`
+    );
+  };
+  
+  
+  
+  
+  const calculateTotalDays = (start, end, day) => {
+    let count = 0;
+  
+    for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+      if (date.getUTCDay() === day) {
+        count++;
+      }
     }
   
-    const totalSundaysPassed = calculateTotalSundays(start, end);
-    const totalSessions = totalSundaysPassed * 2;
-    setTotalSundays(totalSessions);
-  
-    const attendedSessions = records.length;
-    setSundayCount(attendedSessions);
+    console.log(`Total de días calculados para ${day === 0 ? 'domingo' : 'miércoles'}:`, count);
+    return count;
   };
+  
+  
+  
   
 
   const calculateTotalSundays = (start, end) => {
@@ -172,6 +246,59 @@ const AttendanceReport = ({ route }) => {
     }
   };
 
+  const handleDaySelection = (day, sessions) => {
+    if (!initialDate) {
+      console.error('initialDate no está disponible.');
+      return;
+    }
+  
+    // Actualiza el día seleccionado y las sesiones por día
+    setSelectedDay(day);
+    setSessionsPerDay(sessions);
+  
+    const today = new Date();
+    const startDateToUse = new Date(initialDate);
+    const endDateToUse = today;
+  
+    // Filtra los registros según el día seleccionado
+    const filteredRecords = filterByDay(attendanceRecords, day);
+    console.log(`Registros filtrados para ${day === 0 ? 'domingo' : 'miércoles'}:`, filteredRecords);
+    setFilteredRecords(filteredRecords);
+  
+    // Calcula y guarda las sesiones asistidas
+    const attendedSessions = filteredRecords.map((record) => ({
+      date: record.date,
+      session: record.session,
+    }));
+    setAttendedSessions(attendedSessions);
+  
+    // Calcula las sesiones totales y asistidas
+    calculateSessions(filteredRecords, startDateToUse, endDateToUse, day, sessions);
+  };
+  
+  
+  
+  
+  
+  
+  
+  
+
+  const filterByDay = (records, day) => {
+    return records.filter((record) => {
+      const recordDate = new Date(record.date);
+      const isCorrectDay = recordDate.getUTCDay() === day;
+  
+      // Domingo: Puede ser AM o PM; Miércoles: Solo PM
+      const isCorrectSession =
+        day === 0 ? ['AM', 'PM'].includes(record.session) : record.session === 'PM';
+  
+      return isCorrectDay && isCorrectSession;
+    });
+  };
+  
+  
+  
   const resetFilter = () => {
     setStartDate(null);
     setEndDate(null);
@@ -180,6 +307,52 @@ const AttendanceReport = ({ route }) => {
     const today = new Date();
     filterRecords(attendanceRecords, startOfYear, today);
   };
+
+  console.log('Datos para el gráfico:', {
+    asistidas: sundayCount,
+    totales: totalSundays,
+  });
+  //remderizar sesiones asistidas
+  const renderSession = ({ item }) => (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f9f9f9',
+        padding: 15,
+        marginVertical: 8,
+        marginHorizontal: 10,
+        borderRadius: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 2,
+      }}
+    >
+      <Icon
+        name={item.session === 'AM' ? 'weather-sunny' : 'weather-night'}
+        size={24}
+        color={item.session === 'AM' ? '#FFD700' : '#4B0082'}
+        style={{ marginRight: 10 }}
+      />
+      <View>
+        <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#333' }}>
+          {`Fecha: ${item.date}`}
+        </Text>
+        <Text style={{ fontSize: 16, color: '#666' }}>{`Sesión: ${
+          item.session === 'AM' ? 'Mañana' : 'Tarde'
+        }`}</Text>
+      </View>
+    </View>
+  );
+  
+  <FlatList
+    data={attendedSessions}
+    keyExtractor={(item, index) => `${item.date}-${item.session}-${index}`}
+    renderItem={renderSession}
+  />
+  
 
   const chartData = {
     labels: ['Sesiones asistidas', 'Sesiones totales'],
@@ -204,97 +377,92 @@ const AttendanceReport = ({ route }) => {
   ];
   
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Reporte de Asistencia</Text>
+   <ScrollView>
+        <View style={styles.container}>
+          <Text style={styles.title}>Reporte de Asistencia</Text>
+      
+          {/* Botones para seleccionar días */}
+          <View style={styles.daySelectorContainer}>
+            <TouchableOpacity
+                style={[
+                  styles.button,
+                  selectedDay === 0 && styles.selectedButton, // Botón activo
+                ]}
+                onPress={() => handleDaySelection(0, 2)} // Domingos (2 sesiones)
+              >
+                <Text style={styles.buttonText}>Domingos</Text>
+              </TouchableOpacity>
 
-      {/* Gráficos */}
-      <View style={styles.chartContainer}>
-      <BarChart
-        data={chartData}
-        width={Dimensions.get('window').width - 40}
-        height={220}
-        chartConfig={chartConfig}
-        fromZero
-        yAxisLabel=""
-        yAxisSuffix=""
-        yAxisInterval={1} // Intervalos dinámicos según los datos
-        showValuesOnTopOfBars={true} // Muestra valores directamente sobre las barras
-      />
-
-
-        
-<PieChart
-  data={pieData}
-  width={Dimensions.get('window').width - 30}
-  height={210}
-  chartConfig={{
-    backgroundColor: '#fff',
-    backgroundGradientFrom: '#fff',
-    backgroundGradientTo: '#fff',
-    color: (opacity = 1) => `rgba(66, 133, 244, ${opacity})`,
-    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-    
-  }}
-  accessor="population"
-  backgroundColor="transparent"
-  center={[0, 0]}
-  absolute // Números visibles dentro del gráfico
-/>
-
-      </View>
-
-      {/* Filtros */}
-      <View style={styles.dateContainer}>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => setShowDatePicker({ type: 'start', visible: true })}
-        >
-          <Text style={styles.buttonText}>
-            {startDate ? `Desde: ${startDate.toLocaleDateString()}` : 'Seleccionar inicio'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => setShowDatePicker({ type: 'end', visible: true })}
-        >
-          <Text style={styles.buttonText}>
-            {endDate ? `Hasta: ${endDate.toLocaleDateString()}` : 'Seleccionar fin'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity
-        style={[styles.button, styles.resetButton]}
-        onPress={resetFilter}
-      >
-        <Text style={styles.buttonText}>Restablecer Filtro</Text>
-      </TouchableOpacity>
-
-      {/* Selector de Fecha */}
-      {showDatePicker.visible && (
-        <DateTimePicker
-          value={new Date()}
-          mode="date"
-          display="default"
-          onChange={handleDateChange}
-        />
-      )}
-
-      {/* Lista de Registros */}
-      <FlatList
-        data={filteredRecords}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.recordContainer}>
-            <Text>Fecha: {item.date}</Text>
-            <Text>Sesión: {item.session}</Text>
-            <Text>Asistió: Sí</Text>
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  selectedDay === 3 && styles.selectedButton, // Botón activo
+                ]}
+                onPress={() => handleDaySelection(3, 1)} // Miércoles (1 sesión)
+              >
+                <Text style={styles.buttonText}>Miércoles</Text>
+            </TouchableOpacity>
           </View>
-        )}
-      />
-    </View>
+      
+          {/* Gráficos */}
+          <View style={styles.chartContainer}>
+            <BarChart
+              data={chartData}
+              width={Dimensions.get('window').width - 40}
+              height={220}
+              chartConfig={chartConfig}
+              fromZero
+              showValuesOnTopOfBars={true}
+            />
+      
+            <PieChart
+              data={pieData}
+              width={Dimensions.get('window').width - 30}
+              height={210}
+              chartConfig={{
+                backgroundColor: '#fff',
+                backgroundGradientFrom: '#fff',
+                backgroundGradientTo: '#fff',
+                color: (opacity = 1) => `rgba(66, 133, 244, ${opacity})`,
+                labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+              }}
+              accessor="population"
+              backgroundColor="transparent"
+              center={[0, 0]}
+              absolute
+            />
+          </View>
+              <View style={{ marginTop: 20 }}>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>
+                Sesiones Asistidas:
+              </Text>
+              <FlatList
+                data={attendedSessions}
+                keyExtractor={(item, index) => `${item.date}-${item.session}-${index}`}
+                renderItem={renderSession}
+            />
+          </View>
+          {/* Botón "Cargar más" */}
+          {visibleSessions < attendedSessions.length && (
+            <TouchableOpacity
+              onPress={loadMoreSessions}
+              style={{
+                padding: 15,
+                backgroundColor: '#4285F4',
+                borderRadius: 5,
+                alignItems: 'center',
+                marginVertical: 10,
+              }}
+            >
+              <Text style={{ fontSize: 16, color: '#fff', fontWeight: 'bold' }}>
+                Cargar más
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </ScrollView>
   );
+  
 };
 
 const chartConfig = {
@@ -310,20 +478,21 @@ const chartConfig = {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20 },
-  title: { fontSize: 20, fontWeight: 'bold', marginBottom: 20, textAlign: 'center', marginTop:30},
+  title: { fontSize: 20, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
   chartContainer: { marginBottom: 20 },
-  recordContainer: {
-    marginBottom: 10,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
-    backgroundColor: '#f9f9f9',
-  },
-  dateContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
-  button: { backgroundColor: '#4285F4', padding: 5, borderRadius: 5 },
+  daySelectorContainer: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 20 },
+  button: { backgroundColor: '#4285F4', padding: 10, borderRadius: 5, marginHorizontal: 5 },
+  selectedButton: { backgroundColor: '#2a62d4' },
   buttonText: { color: '#fff', fontSize: 16, textAlign: 'center' },
-  resetButton: { backgroundColor: '#f44336' },
+  sessionItem: {
+    paddingVertical: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+  },
+  sessionText: {
+    fontSize: 16,
+    color: '#333',
+  },
 });
 
 export default AttendanceReport;
