@@ -377,91 +377,84 @@ const AttendanceReport = ({ route }) => {
   ];
   
   return (
-   <ScrollView>
-        <View style={styles.container}>
-          <Text style={styles.title}>Reporte de Asistencia</Text>
-      
-          {/* Botones para seleccionar días */}
-          <View style={styles.daySelectorContainer}>
-            <TouchableOpacity
-                style={[
-                  styles.button,
-                  selectedDay === 0 && styles.selectedButton, // Botón activo
-                ]}
-                onPress={() => handleDaySelection(0, 2)} // Domingos (2 sesiones)
-              >
-                <Text style={styles.buttonText}>Domingos</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.button,
-                  selectedDay === 3 && styles.selectedButton, // Botón activo
-                ]}
-                onPress={() => handleDaySelection(3, 1)} // Miércoles (1 sesión)
-              >
-                <Text style={styles.buttonText}>Miércoles</Text>
-            </TouchableOpacity>
-          </View>
-      
-          {/* Gráficos */}
-          <View style={styles.chartContainer}>
-            <BarChart
-              data={chartData}
-              width={Dimensions.get('window').width - 40}
-              height={220}
-              chartConfig={chartConfig}
-              fromZero
-              showValuesOnTopOfBars={true}
-            />
-      
-            <PieChart
-              data={pieData}
-              width={Dimensions.get('window').width - 30}
-              height={210}
-              chartConfig={{
-                backgroundColor: '#fff',
-                backgroundGradientFrom: '#fff',
-                backgroundGradientTo: '#fff',
-                color: (opacity = 1) => `rgba(66, 133, 244, ${opacity})`,
-                labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-              }}
-              accessor="population"
-              backgroundColor="transparent"
-              center={[0, 0]}
-              absolute
-            />
-          </View>
-              <View style={{ marginTop: 20 }}>
-              <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>
-                Sesiones Asistidas:
-              </Text>
-              <FlatList
-                data={attendedSessions}
-                keyExtractor={(item, index) => `${item.date}-${item.session}-${index}`}
-                renderItem={renderSession}
-            />
-          </View>
-          {/* Botón "Cargar más" */}
-          {visibleSessions < attendedSessions.length && (
-            <TouchableOpacity
-              onPress={loadMoreSessions}
-              style={{
-                padding: 15,
-                backgroundColor: '#4285F4',
-                borderRadius: 5,
-                alignItems: 'center',
-                marginVertical: 10,
-              }}
-            >
-              <Text style={{ fontSize: 16, color: '#fff', fontWeight: 'bold' }}>
-                Cargar más
-              </Text>
-            </TouchableOpacity>
-          )}
+    
+      <View style={styles.container}>
+        <Text style={styles.title}>Reporte de Asistencia</Text>
+  
+        {/* Botones para seleccionar días */}
+        <View style={styles.daySelectorContainer}>
+          <TouchableOpacity
+            style={[
+              styles.button,
+              selectedDay === 0 && styles.selectedButton, // Botón activo
+            ]}
+            onPress={() => handleDaySelection(0, 2)} // Domingos (2 sesiones)
+          >
+            <Text style={styles.buttonText}>Domingos</Text>
+          </TouchableOpacity>
+  
+          <TouchableOpacity
+            style={[
+              styles.button,
+              selectedDay === 3 && styles.selectedButton, // Botón activo
+            ]}
+            onPress={() => handleDaySelection(3, 1)} // Miércoles (1 sesión)
+          >
+            <Text style={styles.buttonText}>Miércoles</Text>
+          </TouchableOpacity>
         </View>
-      </ScrollView>
+  
+        {/* Gráficos */}
+        <View style={styles.chartContainer}>
+          <BarChart
+            data={chartData}
+            width={Dimensions.get('window').width - 40}
+            height={220}
+            chartConfig={chartConfig}
+            fromZero
+            showValuesOnTopOfBars={true}
+          />
+  
+          <PieChart
+            data={pieData}
+            width={Dimensions.get('window').width - 30}
+            height={210}
+            chartConfig={{
+              backgroundColor: '#fff',
+              backgroundGradientFrom: '#fff',
+              backgroundGradientTo: '#fff',
+              color: (opacity = 1) => `rgba(66, 133, 244, ${opacity})`,
+              labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+            }}
+            accessor="population"
+            backgroundColor="transparent"
+            center={[0, 0]}
+            absolute
+          />
+        </View>
+  
+        {/* Lista de sesiones asistidas */}
+        <ScrollView>
+          <View style={styles.sessionListContainer}>
+            <Text style={styles.sessionTitle}>Sesiones Asistidas:</Text>
+            <FlatList
+              data={attendedSessions}
+              keyExtractor={(item, index) => `${item.date}-${item.session}-${index}`}
+              renderItem={renderSession}
+            />
+          </View>
+        </ScrollView>
+  
+        {/* Botón "Cargar más" */}
+        {visibleSessions < attendedSessions.length && (
+          <TouchableOpacity onPress={loadMoreSessions} style={styles.loadMoreButton}>
+            <Text style={styles.loadMoreButtonText}>Cargar más</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+ 
   );
+  
   
 };
 
@@ -477,22 +470,61 @@ const chartConfig = {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
-  title: { fontSize: 20, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-  chartContainer: { marginBottom: 20 },
-  daySelectorContainer: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 20 },
-  button: { backgroundColor: '#4285F4', padding: 10, borderRadius: 5, marginHorizontal: 5 },
-  selectedButton: { backgroundColor: '#2a62d4' },
-  buttonText: { color: '#fff', fontSize: 16, textAlign: 'center' },
-  sessionItem: {
-    paddingVertical: 5,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
+  container: {
+    flex: 1,
+    padding: 20,
   },
-  sessionText: {
-    fontSize: 16,
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
     color: '#333',
   },
+  daySelectorContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 20,
+  },
+  button: {
+    backgroundColor: '#4285F4',
+    padding: 12,
+    borderRadius: 8,
+    marginHorizontal: 5,
+  },
+  selectedButton: {
+    backgroundColor: '#2a62d4',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  chartContainer: {
+    marginBottom: 30,
+  },
+  sessionListContainer: {
+    marginTop: 20,
+  },
+  sessionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#444',
+  },
+  loadMoreButton: {
+    padding: 15,
+    backgroundColor: '#4285F4',
+    borderRadius: 8,
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  loadMoreButtonText: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
 });
+
 
 export default AttendanceReport;
