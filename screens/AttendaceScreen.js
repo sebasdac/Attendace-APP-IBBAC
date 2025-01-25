@@ -336,6 +336,7 @@ const styles = StyleSheet.create({
       backgroundColor: '#fff',
       fontSize: 16,
     },
+    
     message: {
       marginTop: 10,
       textAlign: 'center',
@@ -386,27 +387,24 @@ const styles = StyleSheet.create({
       color: '#555',
     },
     optionsContainer: {
+      flexDirection: "row", // Alinea los botones horizontalmente
+      justifyContent: "space-between", // Espacio uniforme entre ellos
       marginTop: 10,
-      paddingVertical: 5,
     },
     optionButton: {
-      paddingVertical: 6, // Reducir el padding para hacer los botones más pequeños
-      paddingHorizontal: 12, // Ajustar el tamaño de los botones
-      backgroundColor: '#007bff', // Cambia el color si es necesario
-      borderRadius: 20,  // Bordes redondeados
-      marginBottom: 8,
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexDirection: 'row', // Para incluir el ícono y el texto
-      opacity: 0.9,  // No tan opacos, pero aún sutiles
-      elevation: 3,  // Para agregar sombra
+      flex: 1, // Cada botón toma un espacio proporcional
+      paddingVertical: 6,
+      marginHorizontal: 5, // Espacio entre botones
+      backgroundColor: "#007bff",
+      borderRadius: 6,
+      alignItems: "center",
     },
     optionText: {
-      color: '#fff',
-      fontSize: 14, // Texto pequeño
-      fontWeight: 'bold',
-      marginLeft: 6, // Separación con el icono
+      color: "#fff",
+      fontSize: 12,
+      fontWeight: "bold",
     },
+    
     
     
     buttonContainer: {
