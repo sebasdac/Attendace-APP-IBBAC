@@ -12,27 +12,26 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "backgroundFetch": {
-      "isEnabled": true
-    },
     "ios": {
       "supportsTablet": true,
-      "backgroundFetch": {
-        "isEnabled": true
-      },
-      "buildNumber": "3" 
+      "buildNumber": "3"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
-      "versionCode": 5, 
+      "versionCode": 5,
       "permissions": [
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
-        "MANAGE_EXTERNAL_STORAGE", 
-        "ACCESS_BACKGROUND_LOCATION", 
+        "MANAGE_EXTERNAL_STORAGE",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "MANAGE_EXTERNAL_STORAGE",
+        "ACCESS_BACKGROUND_LOCATION",
         "FOREGROUND_SERVICE"
       ],
       "package": "com.sebasdac.AsistenciaIBBAC2"
@@ -48,7 +47,11 @@
     "updates": {
       "enabled": true,
       "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 0
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/0227773e-a109-4e07-bb85-76de317888b3"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }
