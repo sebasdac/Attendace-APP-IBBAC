@@ -9,6 +9,7 @@ import SettingsScreen from '../screens/SettingsScreen';
 import AttendanceReportScreen from '../screens/ReportScreen';
 import AttendanceReport from '../screens/AttendanceSelectScreen';
 import ReportStackNavigation from './ReportStackNavigation';
+import Home from '../screens/Home';
 
 const Tab = createBottomTabNavigator();
 
@@ -18,6 +19,7 @@ export default function BottomTabs() {
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
+          
           if (route.name === 'Registro') {
             iconName = focused ? 'person-add' : 'person-add-outline';
           } else if (route.name === 'Reportes') {
@@ -26,8 +28,9 @@ export default function BottomTabs() {
             iconName = focused ? 'checkmark-circle' : 'checkmark-circle-outline';
           } else if (route.name === 'Ajustes'){
             iconName = focused ? 'settings' : "settings-outline";
+          } else if (route.name === 'Home') {
+            iconName = focused ? 'home-outline' : 'home-outline';
           }
-
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: '#000000', // Color para íconos activos
@@ -35,6 +38,7 @@ export default function BottomTabs() {
         headerShown: false,
       })}
     >
+      <Tab.Screen name="Home" component={Home} />
       <Tab.Screen name="Registro" component={ReportStackNavigation} />
       <Tab.Screen name="Reportes" component={AttendanceReportScreen} />
       <Tab.Screen name="Asistencia" component={AttendanceStackNavigator} />

@@ -359,22 +359,23 @@ const AttendanceReport = ({ route }) => {
     datasets: [{ data: [sundayCount, totalSundays] }],
   };
 
-   const pieData = [
-    {
-      name: `Asistidas (${((sundayCount / totalSundays) * 100).toFixed(1)}%)`,
-      population: sundayCount,
-      color: '#4285F4', // Azul principal
-      legendFontColor: '#7F7F7F',
-      legendFontSize: 12,
-    },
-    {
-      name: `No asistidas (${(((totalSundays - sundayCount) / totalSundays) * 100).toFixed(1)}%)`,
-      population: totalSundays - sundayCount,
-      color: '#A8D0F0', // Azul claro
-      legendFontColor: '#7F7F7F',
-      legendFontSize: 12,
-    },
-  ];
+    const pieData = [
+      {
+        name: `Asistidas (${((sundayCount / totalSundays) * 100).toFixed(1)}%)`,
+        population: sundayCount,
+        color: '#333333', // Cambiado a negro
+        legendFontColor: '#000', // Texto de la leyenda en negro
+        legendFontSize: 12,
+      },
+      {
+        name: `No asistidas (${(((totalSundays - sundayCount) / totalSundays) * 100).toFixed(1)}%)`,
+        population: totalSundays - sundayCount,
+        color: '#CCCCCC', // Cambiado a gris claro
+        legendFontColor: '#000', // Texto de la leyenda en negro
+        legendFontSize: 12,
+      },
+    ];
+  
   
   return (
     <View style={styles.container}>
@@ -409,23 +410,24 @@ const AttendanceReport = ({ route }) => {
           style={styles.chartStyle}
         />
   
-      <PieChart
-            data={pieData}
-            width={Dimensions.get('window').width - 40}
-            height={210}
-            chartConfig={{
-              backgroundColor: '#fff',
-              backgroundGradientFrom: '#fff',
-              backgroundGradientTo: '#fff',
-              color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`, // Neutro (negro)
-              labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-            }}
-            accessor="population"
-            backgroundColor="transparent"
-            center={[0, 0]}
-            absolute
-            style={styles.chartStyle}
-          />
+        <PieChart
+        data={pieData}
+        width={Dimensions.get('window').width - 40}
+        height={210}
+        chartConfig={{
+          backgroundColor: '#fff',
+          backgroundGradientFrom: '#fff',
+          backgroundGradientTo: '#fff',
+          color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`, // Color negro
+          labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`, // Etiquetas en negro
+        }}
+        accessor="population"
+        backgroundColor="transparent"
+        center={[0, 0]}
+        absolute
+        style={styles.chartStyle}
+      />
+
       </View>
   
       {/* Lista de sesiones asistidas */}

@@ -236,7 +236,7 @@ export default function AttendanceScreen() {
             <TextInput style={styles.input} placeholder="Fecha de nacimiento (dd/mm/aaaa)" value={birthDay} onChangeText={handleDateChange} keyboardType="numeric" maxLength={10} />
             <View style={styles.buttonContainer}>
               {loading ? (
-                <ActivityIndicator size="small" color="#ffffff" />
+                <ActivityIndicator size="small" color="#4285F4" />
               ) : (
                 <Button title="Guardar Cambios" onPress={saveChanges} color="#28a745" />
               )}
@@ -253,7 +253,9 @@ export default function AttendanceScreen() {
               {loading ? (
                 <ActivityIndicator size="small" color="#ffffff" />
               ) : (
-                <Button title="Registrar" onPress={registerPerson} color="#007bff" />
+                <TouchableOpacity style={styles.registerButton} onPress={registerPerson}>
+                  <Text style={styles.registerButtonText}>Registrar</Text>
+                </TouchableOpacity>
               )}
             </View>
           </>
@@ -275,7 +277,7 @@ export default function AttendanceScreen() {
 
         {/* Mostrar ActivityIndicator mientras se carga la lista de personas */}
         {loadingPeople ? (
-          <ActivityIndicator size="large" color="#007bff" style={styles.loader} />
+          <ActivityIndicator size="large" color="#A8D0F0" style={styles.loader} />
         ) : (
           <FlatList
             data={filteredPeople} // Muestra la lista filtrada
@@ -309,122 +311,144 @@ export default function AttendanceScreen() {
   );
 }
 
+
 const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: '#f5f5f5',
-    },
-    scrollContainer: {
-      padding: 16,
-      paddingBottom: 40,
-    },
-    header: {
-      fontSize: 28,
-      fontWeight: 'bold',
-      color: '#333',
-      marginBottom: 20,
-      textAlign: 'center',
-      marginTop: 40,
-    },
-    input: {
-      height: 45,
-      borderColor: '#ddd',
-      borderWidth: 1,
-      marginBottom: 16,
-      paddingLeft: 12,
-      borderRadius: 8,
-      backgroundColor: '#fff',
-      fontSize: 16,
-    },
-    
-    message: {
-      marginTop: 10,
-      textAlign: 'center',
-      color: 'green',
-      fontWeight: 'bold',
-    },
-    listContainer: {
-      flex: 15,
-      marginTop: 5,
-      padding: 10,
-      borderTopWidth: 1,
-      borderTopColor: '#ddd',
-      backgroundColor: '#fff',
-      borderRadius: 8,
-    },
-    listHeader: {
-      fontSize: 20,
-      marginBottom: 10,
-      fontWeight: 'bold',
-      color: '#333',
-    },
-    searchInput: {
-      height: 40,
-      borderColor: '#ddd',
-      borderWidth: 1,
-      marginBottom: 10,
-      paddingLeft: 12,
-      borderRadius: 8,
-      backgroundColor: '#fff',
-      fontSize: 16,
-      marginVertical: 10, // Espaciado alrededor del campo de búsqueda
-    },
-    personItem: {
-      padding: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: '#ddd',
-      backgroundColor: '#fafafa',
-      borderRadius: 8,
-      marginBottom: 8,
-    },
-    personName: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      color: '#333',
-    },
-    personPhone: {
-      fontSize: 16,
-      color: '#555',
-    },
-    optionsContainer: {
-      flexDirection: "row", // Alinea los botones horizontalmente
-      justifyContent: "space-between", // Espacio uniforme entre ellos
-      marginTop: 10,
-    },
-    optionButton: {
-      flex: 1, // Cada botón toma un espacio proporcional
-      paddingVertical: 6,
-      marginHorizontal: 5, // Espacio entre botones
-      backgroundColor: "#007bff",
-      borderRadius: 6,
-      alignItems: "center",
-    },
-    optionText: {
-      color: "#fff",
-      fontSize: 12,
-      fontWeight: "bold",
-    },
-    
-    
-    
-    buttonContainer: {
-      marginTop: 20,
-      alignItems: 'center',
-    },
-    loader: {
-      marginTop: 10,
-    },
-    button: {
-      padding: 10,
-      backgroundColor: '#007bff',
-      borderRadius: 5,
-      alignItems: 'center',
-      opacity: 0.8,  // Baja la opacidad para que no se vea tan fuerte
-    },
-    buttonText: {
-      color: '#fff',
-      fontSize: 16,
-      fontWeight: 'bold',
-    },
-  });
-  
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F5F5', // Fondo claro
+  },
+  scrollContainer: {
+    padding: 16,
+    paddingBottom: 40,
+    backgroundColor: '#FFFFFF', // Fondo blanco
+  },
+  header: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#111', // Texto oscuro
+    marginBottom: 20,
+    textAlign: 'center',
+    marginTop: 40,
+  },
+  input: {
+    height: 45,
+    borderColor: '#DDD', // Borde gris claro
+    borderWidth: 1,
+    marginBottom: 16,
+    paddingLeft: 12,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF', // Fondo blanco
+    color: '#111', // Texto oscuro
+    fontSize: 16,
+  },
+  message: {
+    marginTop: 10,
+    textAlign: 'center',
+    color: '#007BFF', // Azul para mensajes destacados
+    fontWeight: 'bold',
+  },
+  listContainer: {
+    flex: 15,
+    marginTop: 5,
+    padding: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#EEE', // Línea superior gris muy claro
+    backgroundColor: '#FFFFFF', // Fondo blanco
+    borderRadius: 8,
+  },
+  listHeader: {
+    fontSize: 20,
+    marginBottom: 10,
+    fontWeight: 'bold',
+    color: '#111', // Texto oscuro
+  },
+  searchInput: {
+    height: 40,
+    borderColor: '#DDD', // Borde gris claro
+    borderWidth: 1,
+    marginBottom: 10,
+    paddingLeft: 12,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF', // Fondo blanco
+    color: '#111', // Texto oscuro
+    fontSize: 16,
+    marginVertical: 10, // Espaciado alrededor del campo de búsqueda
+  },
+  personItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEE', // Línea inferior gris claro
+    backgroundColor: '#FAFAFA', // Fondo ligeramente más claro
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  personName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#111', // Texto oscuro
+  },
+  personPhone: {
+    fontSize: 16,
+    color: '#555', // Texto gris medio
+  },
+  optionsContainer: {
+    flexDirection: 'row', // Alinea los botones horizontalmente
+    justifyContent: 'space-between', // Espacio uniforme entre ellos
+    marginTop: 10,
+  },
+  optionButton: {
+    flex: 1, // Cada botón toma un espacio proporcional
+    paddingVertical: 10, // Más espacio vertical
+    marginHorizontal: 5, // Espacio entre botones
+    backgroundColor: '#FFFFFF', // Fondo blanco
+    borderWidth: 1,
+    borderColor: '#DDD', // Borde gris claro
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  optionText: {
+    color: '#111', // Texto oscuro
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  buttonContainer: {
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  loader: {
+    marginTop: 10,
+  },
+  button: {
+    padding: 10,
+    backgroundColor: '#FFFFFF', // Fondo blanco
+    borderWidth: 1,
+    borderColor: '#DDD', // Borde gris claro
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#111', // Texto oscuro
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  registerButton: {
+    paddingVertical: 12, // Espaciado vertical
+    paddingHorizontal: 24, // Espaciado horizontal
+    backgroundColor: '#FFFFFF', // Fondo blanco
+    borderRadius: 8, // Bordes redondeados
+    borderWidth: 1, // Borde sutil
+    borderColor: '#DDD', // Borde gris claro
+    alignItems: 'center', // Centrado horizontal
+    shadowColor: '#000', // Sombra ligera
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3, // Sombra para Android
+  },
+  registerButtonText: {
+    fontSize: 16, // Tamaño de fuente destacado
+    fontWeight: 'bold', // Texto en negrita
+    color: '#111', // Texto oscuro
+  },
+});
+

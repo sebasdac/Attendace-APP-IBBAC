@@ -54,7 +54,7 @@ const AnalyticsScreen = () => {
   return (
     <ScrollView style={{ flex: 1, padding: 16, backgroundColor: "#fff" }}>
       {/* Encabezado */}
-      <Text style={{ fontSize: 24, fontWeight: "bold", color: "#000", marginBottom: 16 }}>
+      <Text style={{ fontSize: 24, fontWeight: "bold", color: "#000", marginBottom: 16, marginTop:30 }}>
         Analytics
       </Text>
 
@@ -80,11 +80,11 @@ const AnalyticsScreen = () => {
       {/* Tarjetas de estadísticas */}
       <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 16 }}>
         <View style={styles.statCard}>
-          <Text style={styles.statTitle}>Total AM Attendance</Text>
+          <Text style={styles.statTitle}>Asistencia AM</Text>
           <Text style={styles.statValue}>{attendanceCounts.AM}</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statTitle}>Total PM Attendance</Text>
+          <Text style={styles.statTitle}>Asistencia PM</Text>
           <Text style={styles.statValue}>{attendanceCounts.PM}</Text>
         </View>
       </View>
