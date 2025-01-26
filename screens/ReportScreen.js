@@ -1,215 +1,157 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
-import { Calendar } from 'react-native-calendars';
-import { useNavigation } from '@react-navigation/native';
+import React, { useState, useEffect } from "react";
+import { View, Text, ScrollView, Dimensions, TouchableOpacity } from "react-native";
+import { BarChart } from "react-native-chart-kit";
+import DateTimePicker from "@react-native-community/datetimepicker"; // Instala con `expo install @react-native-community/datetimepicker`
 import { db } from '../database/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { BarChart } from 'react-native-chart-kit';
-import { Dimensions } from 'react-native';
+import { collection, query, where, getDocs } from "firebase/firestore";
 
-// Componente principal
-export default function AttendanceReportScreen() {
-  const navigation = useNavigation();
-  const [selectedDate, setSelectedDate] = useState('');
-  const [attendanceData, setAttendanceData] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [reportGenerated, setReportGenerated] = useState(false);
+const AnalyticsScreen = () => {
+  const [attendanceCounts, setAttendanceCounts] = useState({ AM: 0, PM: 0 }); // Asistencias por sesión
+  const [selectedDate, setSelectedDate] = useState(new Date()); // Fecha seleccionada
+  const [showDatePicker, setShowDatePicker] = useState(false); // Mostrar selector de fecha
 
-  // Manejo de la selección de fecha
-  const handleDateSelect = (date) => {
-    setSelectedDate(date.dateString);
-  };
+  useEffect(() => {
+    fetchAttendanceData();
+  }, [selectedDate]);
 
-  // Obtener los datos de asistencia de Firebase
   const fetchAttendanceData = async () => {
-    if (!selectedDate) {
-      Alert.alert('Error', 'Por favor, selecciona una fecha.');
-      return;
-    }
-
-    setLoading(true);
-
     try {
-      const attendanceRef = collection(db, 'attendance');
-      const q = query(
-        attendanceRef,
-        where('date', '==', selectedDate)
-      );
+      let q = collection(db, "attendance");
 
-      const querySnapshot = await getDocs(q);
-      const data = [];
-      querySnapshot.forEach((doc) => {
-        const docData = doc.data();
-        data.push(docData);
+      // Filtrar por la fecha seleccionada
+      const dateString = selectedDate.toISOString().split("T")[0];
+      q = query(q, where("date", "==", dateString));
+
+      const snapshot = await getDocs(q);
+
+      if (snapshot.empty) {
+        console.log("No se encontraron datos para la fecha seleccionada.");
+        setAttendanceCounts({ AM: 0, PM: 0 });
+        return;
+      }
+
+      // Contar asistencias por sesión
+      let amCount = 0;
+      let pmCount = 0;
+
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.session === "AM") amCount++;
+        if (data.session === "PM") pmCount++;
       });
 
-      setAttendanceData(data);
-      setReportGenerated(true);
+      setAttendanceCounts({ AM: amCount, PM: pmCount });
     } catch (error) {
-      Alert.alert('Error', 'Hubo un problema al cargar los datos.');
-      console.error(error);
-    } finally {
-      setLoading(false);
+      console.error("Error al obtener los datos de Firestore: ", error);
     }
   };
 
-  // Generar el reporte de asistencia
-  const generateReport = () => {
-    const amAttended = attendanceData.filter((attendee) => attendee.session === 'AM' && attendee.attended === true).length;
-    const pmAttended = attendanceData.filter((attendee) => attendee.session === 'PM' && attendee.attended === true).length;
-    const amNotAttended = attendanceData.filter((attendee) => attendee.session === 'AM' && attendee.attended === false).length;
-    const pmNotAttended = attendanceData.filter((attendee) => attendee.session === 'PM' && attendee.attended === false).length;
-
-    const totalAttendees = amAttended + pmAttended + amNotAttended + pmNotAttended;
-    const amPercentage = ((amAttended / totalAttendees) * 100).toFixed(2);
-    const pmPercentage = ((pmAttended / totalAttendees) * 100).toFixed(2);
-
-    return {
-      amAttended,
-      pmAttended,
-      amNotAttended,
-      pmNotAttended,
-      amPercentage,
-      pmPercentage,
-    };
+  const handleDateChange = (event, selectedDate) => {
+    setShowDatePicker(false);
+    if (selectedDate) setSelectedDate(selectedDate);
   };
 
-  const report = generateReport();
-
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.header}>Reporte de Asistencia</Text>
+    <ScrollView style={{ flex: 1, padding: 16, backgroundColor: "#fff" }}>
+      {/* Encabezado */}
+      <Text style={{ fontSize: 24, fontWeight: "bold", color: "#000", marginBottom: 16 }}>
+        Analytics
+      </Text>
 
-      <Calendar
-        markedDates={{ [selectedDate]: { selected: true, selectedColor: '#007bff', selectedTextColor: 'white' } }}
-        onDayPress={handleDateSelect}
-        //minDate={new Date().toISOString().split('T')[0]} sin min day
-        monthFormat={'yyyy MM'}
-        hideExtraDays
-        markingType={'simple'}
-        style={styles.calendar}
-        theme={{
-          todayTextColor: '#007bff',
-          arrowColor: '#007bff',
-        }}
-      />
+      {/* Selección de Fecha */}
+      <View style={{ marginBottom: 16 }}>
+        <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.datePicker}>
+          <Text style={styles.dateText}>
+            Fecha: {selectedDate.toISOString().split("T")[0]}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
-      <TouchableOpacity style={styles.button} onPress={fetchAttendanceData}>
-        <Text style={styles.buttonText}>Generar Reporte</Text>
-      </TouchableOpacity>
-
-      {loading && <Text style={styles.loading}>Cargando...</Text>}
-
-      {reportGenerated && (
-        <View style={styles.reportContainer}>
-          <Text style={styles.subHeader}>Reporte de Asistencia para {selectedDate}</Text>
-
-          {/* Gráfico de barras */}
-          <BarChart
-            data={{
-              labels: ['AM', 'PM'],
-              datasets: [
-                {
-                  data: [report.amAttended, report.pmAttended],
-                },
-              ],
-            }}
-            width={Dimensions.get('window').width - 32}
-            height={220}
-            chartConfig={{
-              backgroundColor: '#ffffff',
-              backgroundGradientFrom: '#ffffff',
-              backgroundGradientTo: '#f7f7f7',
-              decimalPlaces: 0,
-              color: (opacity = 1) => `rgba(0, 123, 255, ${opacity})`,
-              labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-              style: {
-                borderRadius: 16,
-              },
-            }}
-            fromZero
-            style={styles.chart}
-          />
-
-          {/* Conclusiones */}
-          <View style={styles.conclusionContainer}>
-            <Text style={styles.conclusion}>Total Asistentes: {report.amAttended + report.pmAttended}</Text>
-            <Text style={styles.conclusion}>AM: {report.amAttended} personas ({report.amPercentage}%)</Text>
-            <Text style={styles.conclusion}>PM: {report.pmAttended} personas ({report.pmPercentage}%)</Text>
-          </View>
-        </View>
+      {/* Mostrar el selector de fecha */}
+      {showDatePicker && (
+        <DateTimePicker
+          value={selectedDate}
+          mode="date"
+          display="default"
+          onChange={handleDateChange}
+        />
       )}
+
+      {/* Tarjetas de estadísticas */}
+      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 16 }}>
+        <View style={styles.statCard}>
+          <Text style={styles.statTitle}>Total AM Attendance</Text>
+          <Text style={styles.statValue}>{attendanceCounts.AM}</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statTitle}>Total PM Attendance</Text>
+          <Text style={styles.statValue}>{attendanceCounts.PM}</Text>
+        </View>
+      </View>
+
+      {/* Gráfico de Barras */}
+      <BarChart
+        data={{
+          labels: ["AM", "PM"], // Etiquetas del gráfico
+          datasets: [
+            {
+              data: [attendanceCounts.AM, attendanceCounts.PM], // Cantidades de asistencia
+            },
+          ],
+        }}
+        width={Dimensions.get("window").width - 32}
+        height={220}
+        chartConfig={{
+          backgroundColor: "#fff",
+          backgroundGradientFrom: "#f5f5f5",
+          backgroundGradientTo: "#f5f5f5",
+          decimalPlaces: 0,
+          color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`, // Color negro para las barras
+          labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`, // Color negro para las etiquetas
+          propsForBackgroundLines: {
+            stroke: "#e3e3e3", // Líneas de fondo en gris claro
+          },
+        }}
+        style={{
+          marginVertical: 8,
+          borderRadius: 8,
+        }}
+        fromZero // Las barras comienzan desde 0
+        showValuesOnTopOfBars // Mostrar los valores en la parte superior de las barras
+      />
     </ScrollView>
   );
-}
+};
 
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    backgroundColor: '#f0f4f8',
-    paddingBottom: 20,
-  },
-  header: {
-    fontSize: 25,
-    marginTop:30,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#007bff',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-  },
-  calendar: {
-    borderRadius: 10,
-    overflow: 'hidden',
-    marginBottom: 30,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-  },
-  button: {
-    backgroundColor: '#007bff',
-    padding: 12,
+const styles = {
+  datePicker: {
+    padding: 10,
     borderRadius: 8,
-    alignItems: 'center',
-    marginVertical: 10,
+    backgroundColor: "#f5f5f5",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  buttonText: {
-    color: '#fff',
+  dateText: {
     fontSize: 16,
-    fontWeight: 'bold',
+    color: "#000",
   },
-  loading: {
-    textAlign: 'center',
-    fontSize: 16,
-    color: '#555',
-  },
-  reportContainer: {
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  subHeader: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#007bff',
-  },
-  chart: {
-    marginVertical: 20,
-  },
-  conclusionContainer: {
-    backgroundColor: '#e8f0fe',
+  statCard: {
+    flex: 1,
     padding: 16,
-    borderRadius: 10,
-    width: '100%',
-    marginTop: 20,
+    backgroundColor: "#f5f5f5",
+    borderRadius: 8,
+    marginHorizontal: 4,
   },
-  conclusion: {
-    fontSize: 16,
-    marginVertical: 5,
-    textAlign: 'center',
-    color: '#007bff',
+  statTitle: {
+    fontSize: 14,
+    color: "#888",
+    marginBottom: 8,
   },
-});
+  statValue: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#000",
+  },
+};
+
+export default AnalyticsScreen;

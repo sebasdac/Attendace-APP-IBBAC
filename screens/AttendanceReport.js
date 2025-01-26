@@ -377,109 +377,105 @@ const AttendanceReport = ({ route }) => {
   ];
   
   return (
-    
-      <View style={styles.container}>
-        <Text style={styles.title}>Reporte de Asistencia</Text>
+    <View style={styles.container}>
+      <Text style={styles.title}>Reporte de Asistencia</Text>
   
-        {/* Botones para seleccionar días */}
-        <View style={styles.daySelectorContainer}>
-          <TouchableOpacity
-            style={[
-              styles.button,
-              selectedDay === 0 && styles.selectedButton, // Botón activo
-            ]}
-            onPress={() => handleDaySelection(0, 2)} // Domingos (2 sesiones)
-          >
-            <Text style={styles.buttonText}>Domingos</Text>
-          </TouchableOpacity>
+      {/* Botones para seleccionar días */}
+      <View style={styles.daySelectorContainer}>
+        <TouchableOpacity
+          style={[styles.button, selectedDay === 0 && styles.selectedButton]} // Botón activo
+          onPress={() => handleDaySelection(0, 2)} // Domingos (2 sesiones)
+        >
+          <Text style={styles.buttonText}>Domingos</Text>
+        </TouchableOpacity>
   
-          <TouchableOpacity
-            style={[
-              styles.button,
-              selectedDay === 3 && styles.selectedButton, // Botón activo
-            ]}
-            onPress={() => handleDaySelection(3, 1)} // Miércoles (1 sesión)
-          >
-            <Text style={styles.buttonText}>Miércoles</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={[styles.button, selectedDay === 3 && styles.selectedButton]} // Botón activo
+          onPress={() => handleDaySelection(3, 1)} // Miércoles (1 sesión)
+        >
+          <Text style={styles.buttonText}>Miércoles</Text>
+        </TouchableOpacity>
+      </View>
   
-        {/* Gráficos */}
-        <View style={styles.chartContainer}>
-          <BarChart
-            data={chartData}
-            width={Dimensions.get('window').width - 40}
-            height={220}
-            chartConfig={chartConfig}
-            fromZero
-            showValuesOnTopOfBars={true}
-          />
+      {/* Gráficos */}
+      <View style={styles.chartContainer}>
+        <BarChart
+          data={chartData}
+          width={Dimensions.get('window').width - 40}
+          height={220}
+          chartConfig={chartConfig}
+          fromZero
+          showValuesOnTopOfBars={true}
+          style={styles.chartStyle}
+        />
   
-          <PieChart
+      <PieChart
             data={pieData}
-            width={Dimensions.get('window').width - 30}
+            width={Dimensions.get('window').width - 40}
             height={210}
             chartConfig={{
               backgroundColor: '#fff',
               backgroundGradientFrom: '#fff',
               backgroundGradientTo: '#fff',
-              color: (opacity = 1) => `rgba(66, 133, 244, ${opacity})`,
+              color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`, // Neutro (negro)
               labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
             }}
             accessor="population"
             backgroundColor="transparent"
             center={[0, 0]}
             absolute
+            style={styles.chartStyle}
+          />
+      </View>
+  
+      {/* Lista de sesiones asistidas */}
+      <ScrollView>
+        <View style={styles.sessionListContainer}>
+          <Text style={styles.sessionTitle}>Sesiones Asistidas:</Text>
+          <FlatList
+            data={attendedSessions}
+            keyExtractor={(item, index) => `${item.date}-${item.session}-${index}`}
+            renderItem={renderSession}
           />
         </View>
+      </ScrollView>
   
-        {/* Lista de sesiones asistidas */}
-        <ScrollView>
-          <View style={styles.sessionListContainer}>
-            <Text style={styles.sessionTitle}>Sesiones Asistidas:</Text>
-            <FlatList
-              data={attendedSessions}
-              keyExtractor={(item, index) => `${item.date}-${item.session}-${index}`}
-              renderItem={renderSession}
-            />
-          </View>
-        </ScrollView>
-  
-        {/* Botón "Cargar más" */}
-        {visibleSessions < attendedSessions.length && (
-          <TouchableOpacity onPress={loadMoreSessions} style={styles.loadMoreButton}>
-            <Text style={styles.loadMoreButtonText}>Cargar más</Text>
-          </TouchableOpacity>
-        )}
-      </View>
- 
+      {/* Botón "Cargar más" */}
+      {visibleSessions < attendedSessions.length && (
+        <TouchableOpacity onPress={loadMoreSessions} style={styles.loadMoreButton}>
+          <Text style={styles.loadMoreButtonText}>Cargar más</Text>
+        </TouchableOpacity>
+      )}
+    </View>
   );
+  
   
   
 };
 
 const chartConfig = {
-  backgroundColor: '#1e2923',
-  backgroundGradientFrom: '#08130D',
-  backgroundGradientTo: '#1e2923',
+  backgroundColor: '#fff',
+  backgroundGradientFrom: '#f5f5f5',
+  backgroundGradientTo: '#f5f5f5',
   decimalPlaces: 0,
-  color: (opacity = 1) => `rgba(66, 133, 244, ${opacity})`,
-  labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-  style: { borderRadius: 16 },
+  color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+  labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+  style: { borderRadius: 8 },
   barPercentage: 0.5,
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    padding: 16,
+    backgroundColor: '#fff',
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 16,
     textAlign: 'center',
-    color: '#333',
+    color: '#000',
   },
   daySelectorContainer: {
     flexDirection: 'row',
@@ -487,37 +483,42 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   button: {
-    backgroundColor: '#4285F4',
+    backgroundColor: '#f5f5f5',
     padding: 12,
     borderRadius: 8,
-    marginHorizontal: 5,
+    marginHorizontal: 4,
   },
   selectedButton: {
-    backgroundColor: '#2a62d4',
+    backgroundColor: '#000',
   },
   buttonText: {
-    color: '#fff',
+    color: '#000',
     fontSize: 16,
     textAlign: 'center',
   },
   chartContainer: {
-    marginBottom: 30,
+    marginBottom: 20,
+  },
+  chartStyle: {
+    borderRadius: 8,
+    marginVertical: 8,
   },
   sessionListContainer: {
-    marginTop: 20,
+    marginTop: 16,
+    paddingHorizontal: 8,
   },
   sessionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#444',
+    marginBottom: 8,
+    color: '#000',
   },
   loadMoreButton: {
     padding: 15,
-    backgroundColor: '#4285F4',
+    backgroundColor: '#000',
     borderRadius: 8,
     alignItems: 'center',
-    marginVertical: 10,
+    marginVertical: 16,
   },
   loadMoreButtonText: {
     fontSize: 16,
@@ -525,6 +526,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+
 
 
 export default AttendanceReport;
