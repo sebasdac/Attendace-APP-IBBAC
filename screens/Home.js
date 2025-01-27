@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Dimensions, Image} from 'react-native';
-import { BarChart } from 'react-native-chart-kit';
+import { BarChart, LineChart } from 'react-native-chart-kit';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, getDocs, query, orderBy, where, limit } from 'firebase/firestore';
 import DashboardCard from '../components/DashboardCard';
@@ -157,38 +157,48 @@ const Dashboard = () => {
       </View>
       
       )}
+      <View style={styles.chartWrapper}>
         <View style={styles.chartContainer}>
-          <BarChart
+          <Text style={styles.chartTitle}>Asistencia anual</Text> {/* Título del gráfico */}
+          <LineChart
             data={{
-              labels: monthNames, // Etiquetas personalizadas para los meses
+              labels: monthNames.filter((_, index) => index % 2 === 0), // Mostrar meses alternos
               datasets: [
                 {
-                  data: monthlyAttendance.map((item) => item.count), // Datos del gráfico
+                  data: monthlyAttendance.map((item) => item.count), // Datos dinámicos
+                  color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`, // Color negro para la línea
+                  strokeWidth: 2, // Grosor de la línea
                 },
               ],
             }}
-            width={Dimensions.get('window').width - 40} // Ancho dinámico del gráfico
-            height={220} // Altura del gráfico
-            yAxisLabel=""
+            width={Dimensions.get('window').width * 0.9} // Usar el 90% del ancho de la pantalla
+            height={220}
+            yAxisInterval={10} // Intervalos en el eje Y
             chartConfig={{
-              backgroundColor: '#FFFFFF', // Fondo blanco
-              backgroundGradientFrom: '#E3F2FD', // Azul claro para fondo degradado
-              backgroundGradientTo: '#BBDEFB',   // Azul más oscuro
-              decimalPlaces: 0, // No mostrar decimales
-              color: (opacity = 1) => `rgba(33, 150, 243, ${opacity})`, // Azul vibrante para las barras
-              labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`, // Negro para etiquetas y valores
+              backgroundColor: '#ffffff',
+              backgroundGradientFrom: '#ffffff', // Fondo blanco
+              backgroundGradientTo: '#ffffff', // Fondo blanco
+              decimalPlaces: 0, // Sin decimales
+              color: (opacity = 1) => `rgba(200, 200, 200, ${opacity})`, // Color de las líneas de rejilla (gris claro)
+              labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`, // Color de etiquetas (negro)
               style: { borderRadius: 16 },
-              barPercentage: 0.6, // Ajuste del ancho de las barras
+              propsForDots: {
+                r: '4', // Tamaño de los puntos
+                strokeWidth: '2',
+                stroke: '#ffffff', // Contorno blanco de los puntos
+              },
+              propsForBackgroundLines: {
+                strokeDasharray: '', // Líneas sólidas para la rejilla
+              },
             }}
+            bezier // Hace que la línea sea curva
             style={{
               marginVertical: 8,
-              borderRadius: 16, // Bordes redondeados para el gráfico
+              borderRadius: 16,
             }}
           />
+          </View>
         </View>
-
-
-
  
     </View>
   );
@@ -253,18 +263,29 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
   },
+  chartWrapper: {
+    marginRight:10,
+  },
   chartContainer: {
-    marginTop: 16,
-    backgroundColor: '#FFFFFF', // Fondo blanco del contenedor
+    backgroundColor: '#ffffff', // Fondo blanco del contenedor
     borderRadius: 20, // Bordes redondeados
-    padding: 16, // Espaciado interno
+    padding: 3, // Espaciado interno
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5, // Sombra para Android
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3, // Sombra suave
     borderWidth: 1,
-    borderColor: '#E0E0E0', // Borde gris claro
+    borderColor: '#d0d0d0', // Borde gris claro
+    
+  },
+  chartTitle: {
+    fontSize: 18, // Tamaño de fuente
+    fontWeight: 'bold', // Negrita
+    textAlign: 'center', // Centrar el texto
+    color: '#333', // Gris oscuro
+    marginBottom: 10, // Espacio entre el título y el gráfico
+    
   },
   logo: { width: 100, height: 100, marginBottom: 20 }, // Ajusta el tamaño de la imagen
   
