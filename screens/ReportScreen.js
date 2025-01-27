@@ -17,39 +17,47 @@ const AnalyticsScreen = () => {
   const fetchAttendanceData = async () => {
     try {
       let q = collection(db, "attendance");
-
+  
+      // Formatear la fecha seleccionada en la zona horaria local
+      const localDate = new Date(selectedDate.getTime() + Math.abs(selectedDate.getTimezoneOffset() * 60000));
+      const dateString = localDate.toISOString().split("T")[0];
+  
       // Filtrar por la fecha seleccionada
-      const dateString = selectedDate.toISOString().split("T")[0];
       q = query(q, where("date", "==", dateString));
-
+  
       const snapshot = await getDocs(q);
-
+  
       if (snapshot.empty) {
         console.log("No se encontraron datos para la fecha seleccionada.");
         setAttendanceCounts({ AM: 0, PM: 0 });
         return;
       }
-
+  
       // Contar asistencias por sesión
       let amCount = 0;
       let pmCount = 0;
-
+  
       snapshot.forEach((doc) => {
         const data = doc.data();
         if (data.session === "AM") amCount++;
         if (data.session === "PM") pmCount++;
       });
-
+  
       setAttendanceCounts({ AM: amCount, PM: pmCount });
     } catch (error) {
       console.error("Error al obtener los datos de Firestore: ", error);
     }
   };
-
-  const handleDateChange = (event, selectedDate) => {
+  
+  const handleDateChange = (event, date) => {
     setShowDatePicker(false);
-    if (selectedDate) setSelectedDate(selectedDate);
+    if (date) {
+      // Ajustar la fecha al inicio del día local para evitar desajustes
+      const localDate = new Date(date.setHours(0, 0, 0, 0));
+      setSelectedDate(localDate);
+    }
   };
+  
 
   return (
     <ScrollView style={{ flex: 1, padding: 16, backgroundColor: "#fff" }}>

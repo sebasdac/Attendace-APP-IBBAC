@@ -1,11 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
-
+import { LinearGradient } from 'expo-linear-gradient';
 
 const DashboardCard = ({ title, top3Data, cardStyle }) => (
-    <View style={[styles.card, cardStyle]}>
+  <LinearGradient
+    colors={['#4A90E2', '#1E62D0']}
+    style={[styles.card, cardStyle]}
+  >
     <Text style={[styles.title, styles.top3Title]}>{title}</Text>
     {top3Data && top3Data.length > 0 ? (
       top3Data.map((person, index) => (
@@ -25,60 +27,51 @@ const DashboardCard = ({ title, top3Data, cardStyle }) => (
         </View>
       ))
     ) : (
-      <Text style={styles.noDataText}>No hay datos disponibles</Text>
+      <Text style={styles.noDataText}>No data available</Text>
     )}
-  </View>
-  
+  </LinearGradient>
 );
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        padding: 16,
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-        backgroundColor: '#f5f5f5',
-      },
-      card: {
-        width: '48%',
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 4,
-      },
-      title: {
-        fontSize: 14,
-        color: '#888',
-        marginVertical: 8,
-      },
-      top3Title: {
-        textAlign: 'center',
-        fontSize: 18,
-        marginBottom: 16,
-        color: '#fff',
-      },
-      top3Item: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginVertical: 8,
-      },
-      personName: {
-        fontSize: 16,
-        marginLeft: 12,
-        color: '#fff',
-      },
-      noDataText: {
-        fontSize: 14,
-        color: '#888',
-        textAlign: 'center',
-        marginTop: 16,
-      },
+  card: {
+    width: '48%',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  title: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  top3Title: {
+    fontSize: 18,
+    color: '#fff',
+  },
+  top3Item: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+  personName: {
+    fontSize: 16,
+    marginLeft: 12,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  noDataText: {
+    fontSize: 14,
+    color: '#fff',
+    textAlign: 'center',
+    marginTop: 16,
+  },
 });
 
 export default DashboardCard;

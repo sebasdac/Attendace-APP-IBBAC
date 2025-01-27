@@ -379,7 +379,9 @@ const AttendanceReport = ({ route }) => {
   
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Reporte de Asistencia</Text>
+      <Text style={{ fontSize: 24, fontWeight: "bold", color: "#000", marginBottom: 16, marginTop:30 }}>
+              Reportes
+            </Text>
   
       {/* Botones para seleccionar días */}
       <View style={styles.daySelectorContainer}>
@@ -483,6 +485,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginBottom: 20,
+    opacity: 0.5,
   },
   button: {
     backgroundColor: '#f5f5f5',
