@@ -11,6 +11,7 @@ import AttendanceReport from '../screens/AttendanceSelectScreen';
 import ReportStackNavigation from './ReportStackNavigation';
 import Home from '../screens/Home';
 
+
 const Tab = createBottomTabNavigator();
 
 export default function BottomTabs() {
@@ -39,8 +40,8 @@ export default function BottomTabs() {
       })}
     >
       <Tab.Screen name="Home" component={Home} />
-      <Tab.Screen name="Registro" component={ReportStackNavigation} />
-      <Tab.Screen name="Reportes" component={AttendanceReportScreen} />
+      <Tab.Screen name="Registro" component={AttendanceScreen} />
+      <Tab.Screen name="Reportes" component={ReportStackNavigation} />
       <Tab.Screen name="Asistencia" component={AttendanceStackNavigator} />
       <Tab.Screen name="Ajustes" component={SettingsScreen}/>
     </Tab.Navigator>

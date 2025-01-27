@@ -117,10 +117,19 @@ const fetchPeople = async () => {
     }
   };
 
+    // Función para normalizar texto (elimina tildes y convierte a minúsculas)
+  const normalizeText = (text) => {
+    return text
+      .normalize('NFD') // Descompone caracteres con tildes
+      .replace(/[\u0300-\u036f]/g, '') // Elimina diacríticos (tildes, etc.)
+      .toLowerCase(); // Convierte a minúsculas
+  };
+
   // Filtrar personas según el texto de búsqueda
   const filteredPeople = people.filter((person) =>
-    person.name.toLowerCase().includes(searchText.toLowerCase())
+    normalizeText(person.name).includes(normalizeText(searchText))
   );
+
 
   return (
     <View style={styles.container}>

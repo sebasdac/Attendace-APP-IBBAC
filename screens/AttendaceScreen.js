@@ -224,6 +224,7 @@ export default function AttendanceScreen() {
 
 
   return (
+    <ScrollView>
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : null}>
       <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
         <Text style={styles.header}>Registro de Personas</Text>
@@ -296,10 +297,6 @@ export default function AttendanceScreen() {
                   <TouchableOpacity style={styles.optionButton} onPress={() => confirmDeletePerson(item.id)}>
                     <Text style={styles.optionText}>Eliminar</Text>
                   </TouchableOpacity>
-
-                  <TouchableOpacity style={styles.optionButton} onPress={() => handleViewAttendance(item.id)}>
-                    <Text style={styles.optionText}>Ver Asistencia</Text>
-                  </TouchableOpacity>
                   
                 </View>
               </View>
@@ -308,6 +305,7 @@ export default function AttendanceScreen() {
         )}
       </View>
     </KeyboardAvoidingView>
+    </ScrollView>
   );
 }
 

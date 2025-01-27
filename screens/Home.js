@@ -78,21 +78,30 @@ const Dashboard = () => {
       const attendanceRef = collection(db, 'attendance');
       const q = query(attendanceRef, orderBy('date', 'desc'), limit(1));
       const snapshot = await getDocs(q);
-
+  
       if (!snapshot.empty) {
         const last = snapshot.docs[0].data();
         const lastDate = last.date;
         const lastSession = last.session;
-
+  
         const sessionQuery = query(
           attendanceRef,
           where('date', '==', lastDate),
           where('session', '==', lastSession)
         );
         const sessionSnapshot = await getDocs(sessionQuery);
-
+  
+        // Contar solo los registros con attended: true
+        let attendedCount = 0;
+        sessionSnapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data.attended) {
+            attendedCount++;
+          }
+        });
+  
         setLastSession({
-          attended: sessionSnapshot.docs.length,
+          attended: attendedCount,
           session: lastSession,
           date: lastDate,
         });
@@ -101,30 +110,34 @@ const Dashboard = () => {
       console.error('Error fetching last session:', error);
     }
   };
+  
 
   const fetchMonthlyAttendance = async () => {
     try {
       const attendanceRef = collection(db, 'attendance');
       const snapshot = await getDocs(attendanceRef);
-      const attendanceData = snapshot.docs.map(doc => doc.data());
-
-      const attendanceByMonth = Array(12).fill(0);
-      attendanceData.forEach(item => {
+      const attendanceData = snapshot.docs
+        .map((doc) => doc.data())
+        .filter((item) => item.attended); // Filtrar solo registros donde attended es true
+  
+      const attendanceByMonth = Array(12).fill(0); // Inicializar contadores para los 12 meses
+      attendanceData.forEach((item) => {
         const date = new Date(item.date);
-        const monthIndex = date.getMonth();
-        attendanceByMonth[monthIndex] += 1;
+        const monthIndex = date.getMonth(); // Obtener el índice del mes (0-11)
+        attendanceByMonth[monthIndex] += 1; // Incrementar el contador del mes correspondiente
       });
-
+  
       const formattedData = attendanceByMonth.map((count, index) => ({
-        month: monthNames[index],
+        month: monthNames[index], // Usar los nombres de los meses
         count,
       }));
-
-      setMonthlyAttendance(formattedData);
+  
+      setMonthlyAttendance(formattedData); // Guardar los datos formateados en el estado
     } catch (error) {
       console.error('Error fetching monthly attendance:', error);
     }
   };
+  
 
   if (loading) {
     // Muestra el preloader mientras carga
