@@ -21,6 +21,7 @@ export default function AttendanceScreen() {
   const [isEditing, setIsEditing] = useState(false); // Controla si estamos en modo de edición
   const [selectedPerson, setSelectedPerson] = useState(null); // Persona seleccionada para editar
   const [search, setSearch] = useState(''); // Estado para el texto de búsqueda
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   const phoneRegex = /^[0-9]{8}$/;
 
@@ -95,26 +96,22 @@ export default function AttendanceScreen() {
 
   // Función para cargar la lista de personas
   const fetchPeople = async () => {
-    setLoadingPeople(true); // Inicia el indicador de carga para la lista
-  
+    setLoadingPeople(true);
     try {
       const snapshot = await getDocs(collection(db, 'people'));
       const peopleList = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
-  
-      // Ordenar por nombre en orden alfabético
-      const sortedPeople = peopleList.sort((a, b) =>
-        a.name.localeCompare(b.name)
-      );
-  
+
+      const sortedPeople = peopleList.sort((a, b) => a.name.localeCompare(b.name));
       setPeople(sortedPeople);
-      setFilteredPeople(sortedPeople); // Inicia la lista filtrada con todos los registros
+      setFilteredPeople(sortedPeople);
+      setDataLoaded(true); // Marca que los datos se han cargado
     } catch (error) {
       console.error('Error al cargar personas:', error);
     } finally {
-      setLoadingPeople(false); // Finaliza la carga de la lista
+      setLoadingPeople(false);
     }
   };
   
@@ -181,17 +178,31 @@ export default function AttendanceScreen() {
     }
   };
 
+    // Función para eliminar tildes de un texto
+  const removeDiacritics = (text) => {
+    return text
+      .normalize('NFD') // Descompone los caracteres con tildes en sus componentes
+      .replace(/[\u0300-\u036f]/g, ''); // Elimina los caracteres diacríticos
+  };
+
   // Función para filtrar personas por nombre
   const filterPeople = (searchText) => {
     setSearch(searchText);
 
-    // Filtra la lista de personas por nombre, ignorando mayúsculas/minúsculas
-    const filtered = people.filter((person) =>
-      person.name.toLowerCase().includes(searchText.toLowerCase())
-    );
+    // Elimina las tildes del texto de búsqueda
+    const normalizedSearch = removeDiacritics(searchText.toLowerCase());
+
+    // Filtra la lista de personas por nombre, ignorando tildes y mayúsculas/minúsculas
+    const filtered = people.filter((person) => {
+      const normalizedPersonName = removeDiacritics(person.name.toLowerCase());
+      return normalizedPersonName.includes(normalizedSearch);
+    });
 
     setFilteredPeople(filtered); // Actualiza la lista filtrada
   };
+
+
+
   const handleDateChange = (text) => {
     // Permite solo números
     const formattedText = text.replace(/[^0-9]/g, '');
@@ -212,32 +223,35 @@ export default function AttendanceScreen() {
     // Actualizar el estado con el texto formateado
     setBirthDay(finalText);
   };
-  const handleViewAttendance = (personId) => {
-    navigation.navigate('AttendanceReport', { personId }); // Navega a la pantalla del reporte
-  };
+  
 
-  useFocusEffect(
-    React.useCallback(() => {
-      fetchPeople();  // Llama solo una vez cuando la pantalla se enfoque
-    }, [])
-  );
+  
+
 
 
   return (
-    <ScrollView>
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : null}>
       <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
-        <Text style={styles.header}>Registro de Personas</Text>
-
+        <Text style={{ fontSize: 24, fontWeight: "bold", color: "#000", marginBottom: 16, marginTop:30 }}>
+                      Registro de personas
+                    </Text>
+  
         {/* Formulario de registro */}
         {isEditing ? (
           <>
             <TextInput style={styles.input} placeholder="Nombre" value={name} onChangeText={setName} />
             <TextInput style={styles.input} placeholder="Teléfono" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-            <TextInput style={styles.input} placeholder="Fecha de nacimiento (dd/mm/aaaa)" value={birthDay} onChangeText={handleDateChange} keyboardType="numeric" maxLength={10} />
+            <TextInput
+              style={styles.input}
+              placeholder="Fecha de nacimiento (dd/mm/aaaa)"
+              value={birthDay}
+              onChangeText={handleDateChange}
+              keyboardType="numeric"
+              maxLength={10}
+            />
             <View style={styles.buttonContainer}>
               {loading ? (
-                <ActivityIndicator size="small" color="#4285F4" />
+                <ActivityIndicator size="small" color="#111" />
               ) : (
                 <Button title="Guardar Cambios" onPress={saveChanges} color="#28a745" />
               )}
@@ -245,14 +259,19 @@ export default function AttendanceScreen() {
           </>
         ) : (
           <>
-           
             <TextInput style={styles.input} placeholder="Nombre" value={name} onChangeText={setName} />
             <TextInput style={styles.input} placeholder="Teléfono" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-            <TextInput style={styles.input} placeholder="Fecha de nacimiento (dd/mm/aaaa)" value={birthDay} onChangeText={handleDateChange} keyboardType="numeric" maxLength={10} />
-            
+            <TextInput
+              style={styles.input}
+              placeholder="Fecha de nacimiento (dd/mm/aaaa)"
+              value={birthDay}
+              onChangeText={handleDateChange}
+              keyboardType="numeric"
+              maxLength={10}
+            />
             <View style={styles.buttonContainer}>
               {loading ? (
-                <ActivityIndicator size="small" color="#ffffff" />
+                <ActivityIndicator size="small" color="#111" />
               ) : (
                 <TouchableOpacity style={styles.registerButton} onPress={registerPerson}>
                   <Text style={styles.registerButtonText}>Registrar</Text>
@@ -261,52 +280,68 @@ export default function AttendanceScreen() {
             </View>
           </>
         )}
-
+  
         {message ? <Text style={styles.message}>{message}</Text> : null}
       </ScrollView>
-
+  
       <View style={styles.listContainer}>
         <Text style={styles.listHeader}>Personas Registradas</Text>
-
-        {/* Filtro de búsqueda */}
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Buscar por nombre"
-          value={search}
-          onChangeText={filterPeople} // Filtra las personas al cambiar el texto
-        />
-
-        {/* Mostrar ActivityIndicator mientras se carga la lista de personas */}
-        {loadingPeople ? (
-          <ActivityIndicator size="large" color="#A8D0F0" style={styles.loader} />
-        ) : (
-          <FlatList
-            data={filteredPeople} // Muestra la lista filtrada
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View style={styles.personItem}>
-                <Text style={styles.personName}>{item.name}</Text>
-                <Text style={styles.personPhone}>Numero de teléfono: {item.phone}</Text>
-                <Text style={styles.personPhone}>Fecha de nacimiento: {item.birthDay}</Text>
-
-                {/* Opciones de Editar y Eliminar */}
-                <View style={styles.optionsContainer}>
-                  <TouchableOpacity style={styles.optionButton} onPress={() => editPerson(item)}>
-                    <Text style={styles.optionText}>Editar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.optionButton} onPress={() => confirmDeletePerson(item.id)}>
-                    <Text style={styles.optionText}>Eliminar</Text>
-                  </TouchableOpacity>
-                  
-                </View>
-              </View>
+        {/* Botón para cargar personas */}
+        {!dataLoaded && (
+            <TouchableOpacity
+            style={styles.loadButton}
+            onPress={fetchPeople}
+            disabled={loadingPeople} // Desactiva el botón mientras carga
+          >
+            {loadingPeople ? (
+              <ActivityIndicator size="small" color="##111" />
+            ) : (
+              <Text style={styles.loadButtonText}>Cargar Personas</Text>
             )}
-          />
+          </TouchableOpacity>
+        )}
+  
+        {/* Mostrar la lista de personas solo si ya se cargaron */}
+        {dataLoaded && (
+          <>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar por nombre"
+              value={search}
+              onChangeText={filterPeople}
+            />
+            {loadingPeople ? (
+              <ActivityIndicator size="large" color="#111" style={styles.loader} />
+            ) : (
+              <FlatList
+              data={filteredPeople}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <View style={styles.personItem}>
+                  <Text style={styles.personName}>{item.name}</Text>
+                  <Text style={styles.personPhone}>Número de teléfono: {item.phone}</Text>
+                  <Text style={styles.personPhone}>Fecha de nacimiento: {item.birthDay}</Text>
+            
+                  {/* Contenedor para los botones */}
+                  <View style={styles.optionsContainer}>
+                    <TouchableOpacity style={styles.optionButton} onPress={() => editPerson(item)}>
+                      <Text style={styles.optionText}>Editar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.optionButton} onPress={() => confirmDeletePerson(item.id)}>
+                      <Text style={styles.optionText}>Eliminar</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            />
+            
+            )}
+          </>
         )}
       </View>
     </KeyboardAvoidingView>
-    </ScrollView>
   );
+  
 }
 
 
@@ -353,7 +388,9 @@ const styles = StyleSheet.create({
     borderTopColor: '#EEE', // Línea superior gris muy claro
     backgroundColor: '#FFFFFF', // Fondo blanco
     borderRadius: 8,
+    width: '100%', // Usa todo el ancho disponible
   },
+  
   listHeader: {
     fontSize: 20,
     marginBottom: 10,
@@ -379,6 +416,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAFAFA', // Fondo ligeramente más claro
     borderRadius: 8,
     marginBottom: 8,
+    width: '100%', // Usa todo el ancho disponible
   },
   personName: {
     fontSize: 18,
@@ -390,22 +428,22 @@ const styles = StyleSheet.create({
     color: '#555', // Texto gris medio
   },
   optionsContainer: {
-    flexDirection: 'row', // Alinea los botones horizontalmente
-    justifyContent: 'space-between', // Espacio uniforme entre ellos
-    marginTop: 10,
+    flexDirection: 'row', // Coloca los elementos en fila
+  justifyContent: 'space-around', // Espacio igual entre los botones
+  alignItems: 'center', // Centrado vertical
+  marginTop: 10,
   },
   optionButton: {
-    flex: 1, // Cada botón toma un espacio proporcional
+    flex: 1, // Hace que los botones compartan el espacio disponible
     paddingVertical: 10, // Más espacio vertical
-    marginHorizontal: 5, // Espacio entre botones
-    backgroundColor: '#FFFFFF', // Fondo blanco
-    borderWidth: 1,
-    borderColor: '#DDD', // Borde gris claro
+    marginHorizontal: 5, // Espacio entre los botones
+    backgroundColor: '#FFFFFF', // Fondo acorde a la paleta de colores
     borderRadius: 6,
     alignItems: 'center',
+    borderWidth: 1,
   },
   optionText: {
-    color: '#111', // Texto oscuro
+    color: '#111', // Texto blanco para contraste
     fontSize: 14,
     fontWeight: 'bold',
   },
@@ -435,10 +473,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF', // Fondo blanco
     borderRadius: 8, // Bordes redondeados
     borderWidth: 1, // Borde sutil
-    borderColor: '#DDD', // Borde gris claro
+    
     alignItems: 'center', // Centrado horizontal
     shadowColor: '#000', // Sombra ligera
-    shadowOffset: { width: 0, height: 2 },
+    
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3, // Sombra para Android
@@ -447,6 +485,26 @@ const styles = StyleSheet.create({
     fontSize: 16, // Tamaño de fuente destacado
     fontWeight: 'bold', // Texto en negrita
     color: '#111', // Texto oscuro
+  },
+  loadButton: {
+    backgroundColor: '#FFFFFF', // Color principal de la paleta
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginVertical: 10,
+    borderRadius: 8, // Bordes redondeados
+    borderWidth: 1,
+    alignItems: 'center', // Centrado horizontal
+    shadowColor: '#000', // Sombra ligera
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    
+  },
+  loadButtonText: {
+    color: '#111', // Contraste para el texto
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

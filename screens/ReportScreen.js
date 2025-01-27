@@ -11,10 +11,12 @@ const AnalyticsScreen = () => {
   const [selectedDate, setSelectedDate] = useState(new Date()); // Fecha seleccionada
   const [showDatePicker, setShowDatePicker] = useState(false); // Mostrar selector de fecha
   const [people, setPeople] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const navigation = useNavigation();
   const [filteredPeople, setFilteredPeople] = useState([]); // Lista filtrada
   const [search, setSearch] = useState(''); // Texto de búsqueda
+  const [loadingPeople, setLoadingPeople] = useState(false); 
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   useEffect(() => {
     fetchAttendanceData();
@@ -71,9 +73,8 @@ const AnalyticsScreen = () => {
     }
   };
 
- // Cargar la lista de personas desde Firebase
- useEffect(() => {
   const fetchPeople = async () => {
+    setLoadingPeople(true); // Inicia el indicador de carga
     try {
       const snapshot = await getDocs(collection(db, 'people'));
       const peopleList = snapshot.docs.map((doc) => ({
@@ -82,15 +83,13 @@ const AnalyticsScreen = () => {
       }));
       setPeople(peopleList);
       setFilteredPeople(peopleList); // Inicialmente, mostrar toda la lista
+      setDataLoaded(true); // Marca que los datos se han cargado
     } catch (error) {
       console.error('Error al cargar personas:', error);
     } finally {
-      setLoading(false);
+      setLoadingPeople(false); // Detén el indicador de carga
     }
   };
-
-  fetchPeople();
-}, []);
 
 const normalizeText = (text) => {
   return text
@@ -120,7 +119,7 @@ if (loading) {
 return (
   <ScrollView style={{ flex: 1, padding: 16, backgroundColor: '#fff' }}>
     {/* Encabezado */}
-    <Text style={styles.header}>Analytics</Text>
+    <Text style={styles.header}>Estadísticas</Text>
 
     {/* Selección de Fecha */}
     <View style={{ marginBottom: 16 }}>
@@ -152,9 +151,8 @@ return (
         <Text style={styles.statValue}>{attendanceCounts.PM}</Text>
       </View>
     </View>
-
-    {/* Gráfico de Barras */}
-    <BarChart
+     {/* Gráfico de Barras */}
+     <BarChart
       data={{
         labels: ['AM', 'PM'], // Etiquetas del gráfico
         datasets: [
@@ -172,6 +170,7 @@ return (
         decimalPlaces: 0,
         color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`, // Color negro para las barras
         labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`, // Color negro para las etiquetas
+
         propsForBackgroundLines: {
           stroke: '#ddd', // Líneas de fondo en gris claro
         },
@@ -183,13 +182,30 @@ return (
       fromZero // Las barras comienzan desde 0
       showValuesOnTopOfBars // Mostrar los valores en la parte superior de las barras
     />
+    
 
-   
+
+
+    {/* Botón para cargar personas */}
+    {!dataLoaded && (
+      <TouchableOpacity
+        style={styles.loadButton}
+        onPress={fetchPeople}
+        disabled={loadingPeople}
+      >
+        {loadingPeople ? (
+          <ActivityIndicator size="small" color="#111" />
+        ) : (
+          <Text style={styles.loadButtonText}>Cargar Personas</Text>
+        )}
+      </TouchableOpacity>
+    )}
 
     {/* Lista de Personas */}
-    <View style={styles.container}>
-      <Text style={styles.subHeader}>Reporte por persona</Text>
-       {/* Filtro de búsqueda */}
+    {dataLoaded && (
+      <View style={styles.container}>
+        <Text style={styles.subHeader}>Reporte por persona</Text>
+        {/* Filtro de búsqueda */}
         <TextInput
           style={styles.searchInput}
           placeholder="Buscar por nombre"
@@ -197,27 +213,27 @@ return (
           value={search}
           onChangeText={filterByName}
         />
-      {filteredPeople.length > 0 ? (
-        <FlatList
-          data={filteredPeople}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={styles.personItem}>
-              <Text style={styles.personName}>{item.name}</Text>
-          
-              <TouchableOpacity
-                style={styles.viewButton}
-                onPress={() => handleViewAttendance(item.id)} // Usa el método aquí
-              >
-                <Text style={styles.buttonText}>Ver Asistencia</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        />
-      ) : (
-        <Text style={styles.noDataText}>No hay personas registradas</Text>
-      )}
-    </View>
+        {filteredPeople.length > 0 ? (
+          <FlatList
+            data={filteredPeople}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <View style={styles.personItem}>
+                <Text style={styles.personName}>{item.name}</Text>
+                <TouchableOpacity
+                  style={styles.viewButton}
+                  onPress={() => handleViewAttendance(item.id)}
+                >
+                  <Text style={styles.buttonText}>Ver Asistencia</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          />
+        ) : (
+          <Text style={styles.noDataText}>No hay personas registradas</Text>
+        )}
+      </View>
+    )}
   </ScrollView>
 );
 
@@ -292,6 +308,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
     padding: 16,
+    justifyContent: 'flex-start',
+    
   },
   personItem: {
     padding: 12,
@@ -335,6 +353,20 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadButton: {
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth:1,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  loadButtonText: {
+    color: '#111',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

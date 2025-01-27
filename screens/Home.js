@@ -142,6 +142,7 @@ const Dashboard = () => {
   if (loading) {
     // Muestra el preloader mientras carga
     return (
+      
       <View style={styles.loaderContainer}>
          <Image
           source={require('../assets/preloader.png')} // Cambia esta ruta a la ubicación de tu imagen
@@ -155,7 +156,11 @@ const Dashboard = () => {
   }
 
   return (
+    
     <View style={styles.container}>
+      <Text style={{ fontSize: 24, fontWeight: "bold", color: "#000", marginBottom: 16 }}>
+                            Principal                                             .
+                          </Text>
       <DashboardCard title="Top 3 Asistentes" top3Data={top3Attendees} cardStyle={{ backgroundColor: '#000' }} />
       {lastSession && (
         <View style={styles.lastSessionCard}>
