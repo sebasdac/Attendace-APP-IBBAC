@@ -50,6 +50,7 @@ const formatDate = (timestamp) => {
         const data = doc.data();
         console.log('Datos de persona:', data); // Verificar los datos obtenidos
         return {
+          personId: doc.id || '',
           name: data.name || '', // Nombre de la persona
           phone: data.phone || '', // Teléfono de la persona
           birthDay: data.birthDay || '', // Fecha de nacimiento sin modificar
@@ -141,7 +142,7 @@ const excelDateToJSDate = (excelDate) => {
       const data = XLSX.utils.sheet_to_json(worksheet);
   
       // Validar la estructura del archivo
-      const requiredColumns = ['name', 'phone', 'birthDay'];
+      const requiredColumns = ['personId', 'name', 'phone', 'birthDay'];
       const hasAllColumns = data.every((row) =>
         requiredColumns.every((col) => col in row)
       );
@@ -156,31 +157,10 @@ const excelDateToJSDate = (excelDate) => {
         throw new Error('El archivo está vacío o no contiene datos válidos.');
       }
   
-      // Convertir fechas al formato `dd/mm/aaaa`
-      const parseExcelDate = (excelDate) => {
-        const date = new Date((excelDate - 25569) * 86400 * 1000); // Convierte desde número de serie
-        const day = date.getDate().toString().padStart(2, '0');
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const year = date.getFullYear();
-        return `${day}/${month}/${year}`;
-      };
-  
-      const formatBirthDay = (birthDay) => {
-        if (typeof birthDay === 'number') {
-          return parseExcelDate(birthDay); // Manejar números de serie de Excel
-        } else if (typeof birthDay === 'string') {
-          const [day, month, year] = birthDay.split('/');
-          if (!day || !month || !year) throw new Error(`Fecha inválida: ${birthDay}`);
-          return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
-        } else {
-          throw new Error(`Formato de fecha no reconocido: ${birthDay}`);
-        }
-      };
-  
       // Procesar y validar los datos
       const processedData = data.map((row) => ({
         ...row,
-        birthDay: formatBirthDay(row.birthDay), // Formatear fecha
+        birthDay: row.birthDay, // No se modifica si ya está en formato correcto
       }));
   
       // Eliminar registros existentes
@@ -193,15 +173,18 @@ const excelDateToJSDate = (excelDate) => {
         await batchDelete.commit();
       }
   
-      // Insertar nuevos datos
+      // Insertar nuevos datos con personId como ID del documento
       const batchInsert = writeBatch(db);
       processedData.forEach((person) => {
-        const docRef = doc(collection(db, 'people'));
+        const docRef = doc(personasCollection, person.personId); // Usa personId como ID del documento
         batchInsert.set(docRef, {
-          ...person,
+          name: person.name,
+          phone: person.phone,
+          birthDay: person.birthDay,
           createdAt: Timestamp.now(),
         });
       });
+  
       await batchInsert.commit();
   
       Alert.alert('Éxito', 'Los datos han sido actualizados correctamente.');
@@ -212,6 +195,8 @@ const excelDateToJSDate = (excelDate) => {
       setLoading(false);
     }
   };
+  
+  
   
   
   
