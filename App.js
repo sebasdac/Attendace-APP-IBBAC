@@ -7,6 +7,9 @@ import BirthdayNotification from './components/BirthdayNotification';
 import * as Updates from 'expo-updates';
 import LoginStackNavigation from './navigation/LoginStackNavigation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { db } from './database/firebase';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+
 
 const Stack = createStackNavigator();
 
@@ -40,19 +43,34 @@ export default function App() {
   useEffect(() => {
     const checkUser = async () => {
       try {
-        const storedUser = await AsyncStorage.getItem('users');
+        const storedUser = await AsyncStorage.getItem('user');
         if (storedUser) {
-          setUser(JSON.parse(storedUser)); // Si el usuario está en AsyncStorage, inicia sesión automáticamente
+          const parsedUser = JSON.parse(storedUser);
+          const usersRef = collection(db, 'usuarios');
+          const q = query(usersRef, 
+            where('email', '==', parsedUser.email), 
+            where('password', '==', parsedUser.password) // Verifica también la contraseña
+          );
+          const querySnapshot = await getDocs(q);
+  
+          if (!querySnapshot.empty) {
+            console.log("✅ El usuario y la contraseña son correctos.");
+            setUser(parsedUser);
+          } else {
+            console.log("❌ Usuario o contraseña incorrectos, cerrando sesión.");
+            await AsyncStorage.removeItem('user');
+            setUser(null);
+          }
         }
       } catch (error) {
-        console.log("Error al verificar sesión", error);
+        console.log("⚠️ Error al verificar sesión:", error);
       } finally {
         setLoading(false);
       }
     };
     checkUser();
   }, []);
-
+  
   const applyUpdate = async () => {
     try {
       await Updates.fetchUpdateAsync();
@@ -74,9 +92,12 @@ export default function App() {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
           <Stack.Screen name="BottomTabs" component={BottomTabs} />
+          
+          
         ) : (
           <Stack.Screen name="LoginStack" component={LoginStackNavigation} />
         )}
+       
       </Stack.Navigator>
       
       {updateAvailable && (
@@ -92,6 +113,7 @@ export default function App() {
           </TouchableOpacity>
         </Animated.View>
       )}
+       <BirthdayNotification/>
     </NavigationContainer>
   );
 
