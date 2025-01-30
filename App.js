@@ -1,13 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Animated } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
 import BottomTabs from './navigation/BottomTabs';
 import BirthdayNotification from './components/BirthdayNotification';
 import * as Updates from 'expo-updates';
+import LoginStackNavigation from './navigation/LoginStackNavigation';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const Stack = createStackNavigator();
 
 export default function App() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [bannerAnimation] = useState(new Animated.Value(-100)); // Para animar el banner
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const checkForUpdate = async () => {
@@ -30,6 +37,22 @@ export default function App() {
     checkForUpdate();
   }, []);
 
+  useEffect(() => {
+    const checkUser = async () => {
+      try {
+        const storedUser = await AsyncStorage.getItem('users');
+        if (storedUser) {
+          setUser(JSON.parse(storedUser)); // Si el usuario está en AsyncStorage, inicia sesión automáticamente
+        }
+      } catch (error) {
+        console.log("Error al verificar sesión", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    checkUser();
+  }, []);
+
   const applyUpdate = async () => {
     try {
       await Updates.fetchUpdateAsync();
@@ -39,27 +62,39 @@ export default function App() {
     }
   };
 
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Cargando...</Text>
+      </View>
+    );
+  }
   return (
     <NavigationContainer>
-      <View style={styles.container}>
-        {updateAvailable && (
-          <Animated.View
-            style={[
-              styles.updateBanner,
-              { transform: [{ translateY: bannerAnimation }] },
-            ]}
-          >
-            <Text style={styles.updateText}>¡Actualización disponible!</Text>
-            <TouchableOpacity style={styles.updateButton} onPress={applyUpdate}>
-              <Text style={styles.updateButtonText}>Actualizar</Text>
-            </TouchableOpacity>
-          </Animated.View>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {user ? (
+          <Stack.Screen name="BottomTabs" component={BottomTabs} />
+        ) : (
+          <Stack.Screen name="LoginStack" component={LoginStackNavigation} />
         )}
-        <BirthdayNotification />
-        <BottomTabs />
-      </View>
+      </Stack.Navigator>
+      
+      {updateAvailable && (
+        <Animated.View
+          style={[
+            styles.updateBanner,
+            { transform: [{ translateY: bannerAnimation }] },
+          ]}
+        >
+          <Text style={styles.updateText}>¡Actualización disponible!</Text>
+          <TouchableOpacity style={styles.updateButton} onPress={applyUpdate}>
+            <Text style={styles.updateButtonText}>Actualizar</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
     </NavigationContainer>
   );
+
 }
 
 const styles = StyleSheet.create({
