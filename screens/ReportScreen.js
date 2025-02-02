@@ -34,6 +34,8 @@ const AnalyticsScreen = () => {
       q = query(q, where("date", "==", dateString));
   
       const snapshot = await getDocs(q);
+
+      console.log(dateString);
   
       if (snapshot.empty) {
         console.log("No se encontraron datos para la fecha seleccionada.");
@@ -306,7 +308,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f9f9f9',
     padding: 16,
     justifyContent: 'flex-start',
     

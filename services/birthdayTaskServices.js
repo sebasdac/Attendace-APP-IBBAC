@@ -29,7 +29,7 @@ const sendBirthdayNotification = async (name) => {
 
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: '🎂 ¡Feliz Cumpleaños!',
+        title: '¡Feliz Cumpleaños! 🎂',
         body: `Hoy es el cumpleaños de ${name}! 🎉`,
         sound: true,
       },
