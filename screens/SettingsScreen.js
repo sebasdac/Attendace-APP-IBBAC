@@ -221,7 +221,7 @@ const excelDateToJSDate = (excelDate) => {
         />
       </View>
 
-      <Text style={infoStyle}>Version : 3.0.0v Iglesia Biblica Bautista Agua Caliente. Attendance App</Text> 
+      <Text style={infoStyle}>Version : 3.0.1v Iglesia Biblica Bautista Agua Caliente. Attendance App</Text> 
       
     </View>
   );
