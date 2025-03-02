@@ -6,6 +6,7 @@ import ReportStackNavigation from './ReportStackNavigation';
 import AttendanceStackNavigator from './AttendanceStackNavigator';
 import SettingsScreen from '../screens/SettingsScreen';
 import Home from '../screens/Home';
+import KidsScreen from '../screens/KidsScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -26,6 +27,9 @@ const BottomTabs = () => {
               iconName = focused ? 'settings' : "settings-outline";
             } else if (route.name === 'Home') {
               iconName = focused ? 'home' : 'home-outline';
+            } 
+            else if (route.name === 'Kids') {
+              iconName = focused ? 'extension-puzzle' : 'extension-puzzle-outline';
             }
             return <Ionicons name={iconName} size={size} color={color} />;
           },
@@ -38,7 +42,9 @@ const BottomTabs = () => {
         <Tab.Screen name="Registro" component={AttendanceScreen} />
         <Tab.Screen name="Reportes" component={ReportStackNavigation} />
         <Tab.Screen name="Asistencia" component={AttendanceStackNavigator} />
+        <Tab.Screen name="Kids" component={KidsScreen} />
         <Tab.Screen name="Ajustes" component={SettingsScreen} />
+   
       </Tab.Navigator>
     </>
   );

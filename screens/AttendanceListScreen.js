@@ -1,34 +1,49 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, Switch, Button, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Switch, Button, TextInput, ActivityIndicator, SectionList } from 'react-native';
 import { db } from '../database/firebase';
-import { getDocs, collection, addDoc, query, where, getDoc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
+import { getDocs, collection, addDoc, query, where, updateDoc } from 'firebase/firestore';
 
 export default function AttendanceListScreen({ route }) {
   const { date, session } = route.params;
-  const [people, setPeople] = useState([]);
-  const [attendance, setAttendance] = useState({});
+  const [people, setPeople] = useState([]); // Lista de adultos
+  const [kids, setKids] = useState([]); // Lista de niños
+  const [attendance, setAttendance] = useState({}); // Estado de asistencia
   const [searchText, setSearchText] = useState('');
-  const [loading, setLoading] = useState(false);  // Estado para el indicador de carga
+  const [loading, setLoading] = useState(false);
 
-  // Función para cargar personas desde Firestore
-const fetchPeople = async () => {
-  try {
-    const snapshot = await getDocs(collection(db, 'people'));
-    const peopleList = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+  // Función para cargar personas (adultos) desde Firestore
+  const fetchPeople = async () => {
+    try {
+      const snapshot = await getDocs(collection(db, 'people'));
+      const peopleList = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
 
-    // Ordenar por nombre en orden alfabético
-    const sortedPeople = peopleList.sort((a, b) =>
-      a.name.localeCompare(b.name)
-    );
+      // Ordenar por nombre en orden alfabético
+      const sortedPeople = peopleList.sort((a, b) => a.name.localeCompare(b.name));
+      setPeople(sortedPeople);
+    } catch (error) {
+      console.error('Error al cargar personas:', error);
+    }
+  };
 
-    setPeople(sortedPeople);
-  } catch (error) {
-    console.error('Error al cargar personas:', error);
-  }
-};
+  // Función para cargar niños desde Firestore
+  const fetchKids = async () => {
+    try {
+      const snapshot = await getDocs(collection(db, 'kids'));
+      const kidsList = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      // Ordenar por nombre en orden alfabético
+      const sortedKids = kidsList.sort((a, b) => a.name.localeCompare(b.name));
+      setKids(sortedKids);
+    } catch (error) {
+      console.error('Error al cargar niños:', error);
+    }
+  };
 
   // Función para verificar la asistencia de las personas ya registradas en esa fecha y sesión
   const fetchAttendance = async () => {
@@ -36,7 +51,7 @@ const fetchPeople = async () => {
       const attendanceSnapshot = await getDocs(
         query(collection(db, 'attendance'), where('date', '==', date), where('session', '==', session))
       );
-      
+
       const attendanceData = {};
       attendanceSnapshot.forEach((doc) => {
         const data = doc.data();
@@ -51,29 +66,24 @@ const fetchPeople = async () => {
 
   useEffect(() => {
     fetchPeople();
+    fetchKids();
     fetchAttendance();
   }, []);
 
   // Manejo del cambio de asistencia (sin guardar en Firestore todavía)
   const handleAttendanceChange = (id, attended) => {
-    // Imprime el id recibido y el valor de 'attended'
-    console.log("id recibido en handleAttendanceChange:", id);
-    console.log("Valor de attended:", attended);
-
-    // Actualizamos el estado local
     setAttendance((prev) => ({
       ...prev,
       [id]: attended,
     }));
-
-    console.log("Asistencia cambiada localmente para el id:", id);
   };
 
+  // Función para guardar la asistencia en Firestore
   const handleSaveAttendance = async () => {
-    setLoading(true);  // Inicia la carga
+    setLoading(true);
 
     try {
-      // Guardamos o actualizamos la asistencia de cada persona
+      // Guardamos o actualizamos la asistencia de cada persona (adultos y niños)
       for (const personId in attendance) {
         const attendanceRef = collection(db, 'attendance');
         const attendanceQuery = query(
@@ -95,16 +105,13 @@ const fetchPeople = async () => {
           });
         } else {
           // Si ya existe, actualizamos el primer documento encontrado
-          const doc = existingAttendance.docs[0];  // Tomamos el primer documento
-          const docRef = doc.ref;  // Referencia al documento
-          console.log("id del documento encontrado:", doc.id);  // Asegúrate de que este sea el id correcto
+          const doc = existingAttendance.docs[0];
+          const docRef = doc.ref;
 
-          // Solo actualizamos si el valor de asistencia es diferente
           if (doc.data().attended !== attendance[personId]) {
             await updateDoc(docRef, {
               attended: attendance[personId],
             });
-            console.log("Asistencia actualizada para el documento con id:", doc.id);
           }
         }
       }
@@ -113,11 +120,11 @@ const fetchPeople = async () => {
       alert('Error al guardar la asistencia.');
       console.error("Error al guardar la asistencia:", error);
     } finally {
-      setLoading(false);  // Detiene la carga después de guardar
+      setLoading(false);
     }
   };
 
-    // Función para normalizar texto (elimina tildes y convierte a minúsculas)
+  // Función para normalizar texto (elimina tildes y convierte a minúsculas)
   const normalizeText = (text) => {
     return text
       .normalize('NFD') // Descompone caracteres con tildes
@@ -125,11 +132,31 @@ const fetchPeople = async () => {
       .toLowerCase(); // Convierte a minúsculas
   };
 
-  // Filtrar personas según el texto de búsqueda
+  // Filtrar personas y niños según el texto de búsqueda
   const filteredPeople = people.filter((person) =>
     normalizeText(person.name).includes(normalizeText(searchText))
   );
+  const filteredKids = kids.filter((kid) =>
+    normalizeText(kid.name).includes(normalizeText(searchText))
+  );
 
+  // Agrupar niños por clase
+  const kidsByClass = filteredKids.reduce((acc, kid) => {
+    if (!acc[kid.class]) {
+      acc[kid.class] = [];
+    }
+    acc[kid.class].push(kid);
+    return acc;
+  }, {});
+
+  // Convertir el objeto de niños agrupados en un array para SectionList
+  const sections = [
+    { title: 'Adultos', data: filteredPeople },
+    ...Object.keys(kidsByClass).map((classRoom) => ({
+      title: `Niños - Clase: ${classRoom}`,
+      data: kidsByClass[classRoom],
+    })),
+  ];
 
   return (
     <View style={styles.container}>
@@ -145,27 +172,26 @@ const fetchPeople = async () => {
         onChangeText={(text) => setSearchText(text)}
       />
 
-      {/* Lista de personas con la opción de asistencia */}
-      <FlatList
-        data={filteredPeople}
+      {/* Lista de personas y niños con la opción de asistencia */}
+      <SectionList
+        sections={sections}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View style={styles.personItem}>
             <Text style={styles.personName}>{item.name}</Text>
             <Switch
               value={attendance[item.id] || false}
-              onValueChange={(value) => {
-                console.log("Valor del switch cambiado:", value); // Verificar si el valor está cambiando
-                handleAttendanceChange(item.id, value);
-              }}
+              onValueChange={(value) => handleAttendanceChange(item.id, value)}
               thumbColor={attendance[item.id] ? '#4CAF50' : '#FF5722'}
               trackColor={{ false: '#f0f0f0', true: '#a5d6a7' }}
             />
-
             <Text style={styles.attendanceStatus}>
               {attendance[item.id] ? 'Asistió' : 'No asistió'}
             </Text>
           </View>
+        )}
+        renderSectionHeader={({ section }) => (
+          <Text style={styles.sectionHeader}>{section.title}</Text>
         )}
       />
 
@@ -227,6 +253,14 @@ const styles = StyleSheet.create({
   attendanceStatus: {
     fontSize: 16,
     color: '#777',
+  },
+  sectionHeader: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    backgroundColor: '#e0e0e0',
+    padding: 10,
+    marginTop: 10,
+    borderRadius: 8,
   },
   saveButtonContainer: {
     marginTop: 20,
