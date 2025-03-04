@@ -21,14 +21,19 @@ export default function KidsAttendanceScreen({ route }) {
   const fetchKidsByClass = async () => {
     try {
       setLoading(true);
-      const snapshot = await getDocs(
-        query(collection(db, "kids"), where("class", "==", classRoom))
-      );
-      const kidsList = snapshot.docs.map((doc) => ({
+
+      // Obtener todos los niños
+      const kidsSnapshot = await getDocs(collection(db, "kids"));
+      const kidsList = kidsSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
-      setKids(kidsList);
+
+      // Filtrar los niños que pertenecen a la clase seleccionada
+      const filteredKids = kidsList.filter((kid) =>
+        kid.classes.includes(classRoom)
+      );
+      setKids(filteredKids);
 
       // Cargar la asistencia ya registrada para la fecha y sesión seleccionadas
       const attendanceSnapshot = await getDocs(

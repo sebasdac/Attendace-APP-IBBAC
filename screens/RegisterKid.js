@@ -22,19 +22,22 @@ import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc } from "firebase
 export default function RegisterKid({ navigation }) {
   const [name, setName] = useState("");
   const [birthDay, setBirthDay] = useState("");
-  const [classRoom, setClassRoom] = useState(""); // Clase seleccionada
+  const [selectedClasses, setSelectedClasses] = useState([]); // Array de clases seleccionadas
   const [classes, setClasses] = useState([]); // Lista de clases desde Firestore
   const [loading, setLoading] = useState(false);
   const [showClassPicker, setShowClassPicker] = useState(false); // Modal para seleccionar clase
   const [kids, setKids] = useState([]); // Lista de niños
+  const [filteredKids, setFilteredKids] = useState([]); // Lista de niños filtrados
   const [isEditing, setIsEditing] = useState(false); // Modo edición
   const [selectedKid, setSelectedKid] = useState(null); // Niño seleccionado para editar
   const [loadingKids, setLoadingKids] = useState(false); // Estado de carga de niños
   const [dataLoaded, setDataLoaded] = useState(false); // Indica si los niños ya se cargaron
+  const [searchName, setSearchName] = useState(""); // Filtro por nombre
+  const [searchClass, setSearchClass] = useState(""); // Filtro por clase
+  const [showFilters, setShowFilters] = useState(false); // Mostrar campos de búsqueda
 
   // Función para validar la fecha de nacimiento
   const validateDate = (date) => {
-    // Verifica que el formato sea dd/mm/yyyy
     const regex = /^\d{2}\/\d{2}\/\d{4}$/;
     if (!regex.test(date)) {
       return false;
@@ -44,23 +47,16 @@ export default function RegisterKid({ navigation }) {
 
   // Función para formatear la fecha de nacimiento
   const handleDateChange = (text) => {
-    // Permite solo números
     const formattedText = text.replace(/[^0-9]/g, "");
-
-    // Si la longitud del texto es mayor que 10, no hacer nada
     if (formattedText.length > 10) return;
 
     let finalText = formattedText;
-
-    // Insertar los separadores '/'
     if (formattedText.length >= 3) {
       finalText = `${formattedText.slice(0, 2)}/${formattedText.slice(2)}`;
     }
     if (formattedText.length >= 5) {
       finalText = `${finalText.slice(0, 5)}/${finalText.slice(5)}`;
     }
-
-    // Actualizar el estado con el texto formateado
     setBirthDay(finalText);
   };
 
@@ -88,7 +84,9 @@ export default function RegisterKid({ navigation }) {
         ...doc.data(),
       }));
       setKids(kidsList);
-      setDataLoaded(true); // Marcar que los datos se han cargado
+      setFilteredKids(kidsList); // Inicializar la lista filtrada con todos los niños
+      setDataLoaded(true);
+      setShowFilters(true); // Mostrar los campos de búsqueda después de cargar los niños
     } catch (error) {
       console.error("Error al cargar niños:", error);
     } finally {
@@ -96,14 +94,24 @@ export default function RegisterKid({ navigation }) {
     }
   };
 
+  // Función para seleccionar/deseleccionar una clase
+  const toggleClassSelection = (classItem) => {
+    setSelectedClasses((prev) => {
+      if (prev.includes(classItem.name)) {
+        return prev.filter((item) => item !== classItem.name); // Deseleccionar
+      } else {
+        return [...prev, classItem.name]; // Seleccionar
+      }
+    });
+  };
+
   // Función para registrar o actualizar un niño
   const saveKid = async () => {
-    if (name.trim() === "" || birthDay === "" || classRoom === "") {
+    if (name.trim() === "" || birthDay === "" || selectedClasses.length === 0) {
       Alert.alert("Error", "Por favor, ingresa todos los campos");
       return;
     }
 
-    // Validar la fecha de nacimiento
     if (!validateDate(birthDay)) {
       Alert.alert("Error", "Por favor, ingresa una fecha válida en formato dd/mm/aaaa");
       return;
@@ -117,7 +125,7 @@ export default function RegisterKid({ navigation }) {
         await updateDoc(doc(db, "kids", selectedKid.id), {
           name,
           birthDay,
-          class: classRoom,
+          classes: selectedClasses, // Guardar el array de clases
         });
         Alert.alert("Éxito", "Niño actualizado con éxito");
       } else {
@@ -125,7 +133,7 @@ export default function RegisterKid({ navigation }) {
         await addDoc(collection(db, "kids"), {
           name,
           birthDay,
-          class: classRoom,
+          classes: selectedClasses, // Guardar el array de clases
           isKid: true,
           createdAt: new Date(),
         });
@@ -135,10 +143,10 @@ export default function RegisterKid({ navigation }) {
       // Limpiar el formulario y recargar la lista de niños
       setName("");
       setBirthDay("");
-      setClassRoom("");
+      setSelectedClasses([]);
       setIsEditing(false);
       setSelectedKid(null);
-      fetchKids(); // Recargar la lista después de guardar
+      fetchKids();
     } catch (error) {
       Alert.alert("Error", `Error al ${isEditing ? "actualizar" : "registrar"}: ${error.message}`);
     } finally {
@@ -151,7 +159,7 @@ export default function RegisterKid({ navigation }) {
     try {
       await deleteDoc(doc(db, "kids", id));
       Alert.alert("Éxito", "Niño eliminado con éxito");
-      fetchKids(); // Recargar la lista de niños
+      fetchKids();
     } catch (error) {
       Alert.alert("Error", `Error al eliminar: ${error.message}`);
     }
@@ -181,9 +189,35 @@ export default function RegisterKid({ navigation }) {
     setSelectedKid(kid);
     setName(kid.name);
     setBirthDay(kid.birthDay);
-    setClassRoom(kid.class);
+    setSelectedClasses(kid.classes); // Cargar las clases seleccionadas
     setIsEditing(true);
   };
+
+  // Función para filtrar la lista de niños por nombre y clase
+  const filterKids = () => {
+    let filtered = kids;
+
+    // Filtrar por nombre
+    if (searchName) {
+      filtered = filtered.filter((kid) =>
+        kid.name.toLowerCase().includes(searchName.toLowerCase())
+      );
+    }
+
+    // Filtrar por clase
+    if (searchClass) {
+      filtered = filtered.filter((kid) =>
+        kid.classes.includes(searchClass)
+      );
+    }
+
+    setFilteredKids(filtered);
+  };
+
+  // Efecto para aplicar el filtro cada vez que cambia el nombre o la clase
+  useEffect(() => {
+    filterKids();
+  }, [searchName, searchClass, kids]);
 
   // Cargar clases al iniciar la pantalla
   useEffect(() => {
@@ -217,20 +251,22 @@ export default function RegisterKid({ navigation }) {
             style={styles.input}
             placeholder="Fecha de nacimiento (dd/mm/aaaa)"
             value={birthDay}
-            onChangeText={handleDateChange} // Usar handleDateChange para formatear la fecha
+            onChangeText={handleDateChange}
             keyboardType="numeric"
             maxLength={10}
           />
         </View>
 
-        {/* Selector de clase */}
+        {/* Selector de clases */}
         <TouchableOpacity
           style={styles.classPickerButton}
           onPress={() => setShowClassPicker(true)}
         >
           <Icon name="class" size={24} color="#666" style={styles.icon} />
           <Text style={styles.classPickerText}>
-            {classRoom || "Selecciona una clase"}
+            {selectedClasses.length > 0
+              ? selectedClasses.join(", ")
+              : "Selecciona una o más clases"}
           </Text>
         </TouchableOpacity>
 
@@ -264,18 +300,39 @@ export default function RegisterKid({ navigation }) {
           </TouchableOpacity>
         )}
 
+        {/* Campos de búsqueda (solo se muestran después de cargar los niños) */}
+        {showFilters && (
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar por nombre"
+              value={searchName}
+              onChangeText={setSearchName}
+            />
+            <TouchableOpacity
+              style={styles.classPickerButton}
+              onPress={() => setShowClassPicker(true)}
+            >
+              <Icon name="class" size={24} color="#666" style={styles.icon} />
+              <Text style={styles.classPickerText}>
+                {searchClass || "Buscar por clase"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Lista de niños registrados */}
         {dataLoaded && (
           <>
             <Text style={styles.listHeader}>Niños Registrados</Text>
             <FlatList
-              data={kids}
+              data={filteredKids}
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => (
                 <View style={styles.kidItem}>
                   <Text style={styles.kidName}>{item.name}</Text>
                   <Text style={styles.kidDetails}>Fecha de nacimiento: {item.birthDay}</Text>
-                  <Text style={styles.kidDetails}>Clase: {item.class}</Text>
+                  <Text style={styles.kidDetails}>Clases: {item.classes.join(", ")}</Text>
                   <View style={styles.actionsContainer}>
                     <TouchableOpacity
                       style={styles.actionButton}
@@ -297,7 +354,7 @@ export default function RegisterKid({ navigation }) {
         )}
       </ScrollView>
 
-      {/* Modal para seleccionar clase */}
+      {/* Modal para seleccionar clases */}
       <Modal
         visible={showClassPicker}
         transparent={true}
@@ -308,27 +365,36 @@ export default function RegisterKid({ navigation }) {
           <View style={styles.modalOverlay} />
         </TouchableWithoutFeedback>
         <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Selecciona una Clase</Text>
+          <Text style={styles.modalTitle}>Selecciona una o más Clases</Text>
           <ScrollView>
             {classes.map((classItem) => (
               <TouchableOpacity
                 key={classItem.id}
                 style={styles.classItem}
                 onPress={() => {
-                  setClassRoom(classItem.name);
+                  if (showFilters) {
+                    setSearchClass(classItem.name); // Seleccionar clase para filtrar
+                  } else {
+                    toggleClassSelection(classItem); // Seleccionar clase para registro
+                  }
                   setShowClassPicker(false);
                 }}
               >
                 <Text style={styles.classItemText}>{classItem.name}</Text>
+                {selectedClasses.includes(classItem.name) && (
+                  <Icon name="check" size={20} color="#4CAF50" />
+                )}
               </TouchableOpacity>
             ))}
           </ScrollView>
+
         </View>
       </Modal>
     </KeyboardAvoidingView>
   );
 }
 
+// Estilos
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -418,6 +484,20 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#FFF",
   },
+  searchContainer: {
+    marginBottom: 20,
+  },
+  searchInput: {
+    backgroundColor: "#FFF",
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
@@ -440,6 +520,9 @@ const styles = StyleSheet.create({
     padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: "#EEE",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   classItemText: {
     fontSize: 16,
