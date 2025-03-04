@@ -8,6 +8,8 @@ import SettingsScreen from '../screens/SettingsScreen';
 import Home from '../screens/Home';
 import KidsScreen from '../screens/KidsScreen';
 import KidsAttendanceStackNavigation from './KidsAttendanceStackNavigation';
+import MultiColorIcon from '../components/MultiColorIcon';
+
 
 const Tab = createBottomTabNavigator();
 
@@ -30,8 +32,9 @@ const BottomTabs = () => {
               iconName = focused ? 'home' : 'home-outline';
             } 
             else if (route.name === 'Kids') {
-              iconName = focused ? 'extension-puzzle' : 'extension-puzzle-outline';
+              return <MultiColorIcon name={focused ? 'extension-puzzle' : 'extension-puzzle-outline'} size={size} focused={focused} />;
             }
+            
             return <Ionicons name={iconName} size={size} color={color} />;
           },
           tabBarActiveTintColor: '#000000',

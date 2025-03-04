@@ -16,6 +16,7 @@ import {
   collection,
   getDocs,
 } from "firebase/firestore";
+import GradientCard from "../components/GradientCard";
 
 export default function KidsScreen({ navigation }) {
   const [classes, setClasses] = useState([]); // Lista de clases desde Firestore
@@ -48,28 +49,33 @@ export default function KidsScreen({ navigation }) {
     <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.header}>Kids</Text>
       {/* Card de Registro */}
-      <TouchableOpacity onPress={() => navigation.navigate("RegisterKid")}>
-        <LinearGradient
-          colors={["#6a11cb", "#2575fc"]} // Gradiente morado a azul
-          style={styles.card}
-        >
-          <Icon name="person-add" size={40} color="#FFF" />
-          <Text style={styles.cardTitle}>Registrar Niño</Text>
-          <Text style={styles.cardSubtitle}>Agrega nuevos niños a la base de datos.</Text>
-        </LinearGradient>
-      </TouchableOpacity>
+        {/* Card de Registro */}
+        <GradientCard
+        colors={["#6a11cb", "#2575fc"]} // Gradiente morado a azul
+        iconName="person-add"
+        title="Registrar Niño"
+        subtitle="Agrega nuevos niños a la base de datos."
+        onPress={() => navigation.navigate("RegisterKid")}
+      />
 
       {/* Card de Asistencia */}
-      <TouchableOpacity onPress={() => setShowClassPicker(true)}>
-        <LinearGradient
-          colors={["#ff7e5f", "#feb47b"]} // Gradiente naranja a rosa
-          style={styles.card}
-        >
-          <Icon name="list-alt" size={40} color="#FFF" />
-          <Text style={styles.cardTitle}>Pasar Lista</Text>
-          <Text style={styles.cardSubtitle}>Marca la asistencia de los niños.</Text>
-        </LinearGradient>
-      </TouchableOpacity>
+      <GradientCard
+        colors={["#ff7e5f", "#feb47b"]} // Gradiente naranja a rosa
+        iconName="list-alt"
+        title="Pasar Lista"
+        subtitle="Marca la asistencia de los niños."
+        onPress={() => setShowClassPicker(true)}
+      />
+
+      {/* Card de Asistencia Mensual */}
+      <GradientCard
+        colors={["#56ab2f", "#a8e063"]}
+        iconName="calendar-today"
+        title="Asistencia Mensual"
+        subtitle="Revisa la asistencia de los niños por mes."
+        onPress={() => navigation.navigate("MonthlyAttendanceScreen")} // Navega a la pantalla de asistencia mensual
+        />
+    
 
       {/* Modal para seleccionar clase (solo para pasar lista) */}
       <Modal

@@ -12,11 +12,12 @@ import {
   Modal,
   TouchableWithoutFeedback,
   Alert,
+  FlatList,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient"; // Para los gradientes
 import Icon from "react-native-vector-icons/MaterialIcons"; // Para los íconos
 import { db } from "../database/firebase";
-import { collection, addDoc, getDocs } from "firebase/firestore";
+import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc } from "firebase/firestore";
 
 export default function RegisterKid({ navigation }) {
   const [name, setName] = useState("");
@@ -25,6 +26,11 @@ export default function RegisterKid({ navigation }) {
   const [classes, setClasses] = useState([]); // Lista de clases desde Firestore
   const [loading, setLoading] = useState(false);
   const [showClassPicker, setShowClassPicker] = useState(false); // Modal para seleccionar clase
+  const [kids, setKids] = useState([]); // Lista de niños
+  const [isEditing, setIsEditing] = useState(false); // Modo edición
+  const [selectedKid, setSelectedKid] = useState(null); // Niño seleccionado para editar
+  const [loadingKids, setLoadingKids] = useState(false); // Estado de carga de niños
+  const [dataLoaded, setDataLoaded] = useState(false); // Indica si los niños ya se cargaron
 
   // Función para validar la fecha de nacimiento
   const validateDate = (date) => {
@@ -72,8 +78,26 @@ export default function RegisterKid({ navigation }) {
     }
   };
 
-  // Función para registrar un niño
-  const registerKid = async () => {
+  // Función para cargar los niños desde Firestore
+  const fetchKids = async () => {
+    setLoadingKids(true);
+    try {
+      const snapshot = await getDocs(collection(db, "kids"));
+      const kidsList = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setKids(kidsList);
+      setDataLoaded(true); // Marcar que los datos se han cargado
+    } catch (error) {
+      console.error("Error al cargar niños:", error);
+    } finally {
+      setLoadingKids(false);
+    }
+  };
+
+  // Función para registrar o actualizar un niño
+  const saveKid = async () => {
     if (name.trim() === "" || birthDay === "" || classRoom === "") {
       Alert.alert("Error", "Por favor, ingresa todos los campos");
       return;
@@ -88,24 +112,77 @@ export default function RegisterKid({ navigation }) {
     try {
       setLoading(true);
 
-      await addDoc(collection(db, "kids"), {
-        name,
-        birthDay,
-        class: classRoom,
-        isKid: true,
-        createdAt: new Date(),
-      });
+      if (isEditing) {
+        // Actualizar niño existente
+        await updateDoc(doc(db, "kids", selectedKid.id), {
+          name,
+          birthDay,
+          class: classRoom,
+        });
+        Alert.alert("Éxito", "Niño actualizado con éxito");
+      } else {
+        // Registrar nuevo niño
+        await addDoc(collection(db, "kids"), {
+          name,
+          birthDay,
+          class: classRoom,
+          isKid: true,
+          createdAt: new Date(),
+        });
+        Alert.alert("Éxito", "Niño registrado con éxito");
+      }
 
-      Alert.alert("Éxito", "Niño registrado con éxito");
+      // Limpiar el formulario y recargar la lista de niños
       setName("");
       setBirthDay("");
       setClassRoom("");
-      navigation.goBack(); // Regresar a la pantalla anterior
+      setIsEditing(false);
+      setSelectedKid(null);
+      fetchKids(); // Recargar la lista después de guardar
     } catch (error) {
-      Alert.alert("Error", `Error al registrar: ${error.message}`);
+      Alert.alert("Error", `Error al ${isEditing ? "actualizar" : "registrar"}: ${error.message}`);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Función para eliminar un niño
+  const deleteKid = async (id) => {
+    try {
+      await deleteDoc(doc(db, "kids", id));
+      Alert.alert("Éxito", "Niño eliminado con éxito");
+      fetchKids(); // Recargar la lista de niños
+    } catch (error) {
+      Alert.alert("Error", `Error al eliminar: ${error.message}`);
+    }
+  };
+
+  // Función para confirmar la eliminación de un niño
+  const confirmDeleteKid = (id) => {
+    Alert.alert(
+      "Confirmar Eliminación",
+      "¿Estás seguro de que deseas eliminar este niño?",
+      [
+        {
+          text: "Cancelar",
+          style: "cancel",
+        },
+        {
+          text: "Eliminar",
+          onPress: () => deleteKid(id),
+          style: "destructive",
+        },
+      ]
+    );
+  };
+
+  // Función para editar un niño
+  const editKid = (kid) => {
+    setSelectedKid(kid);
+    setName(kid.name);
+    setBirthDay(kid.birthDay);
+    setClassRoom(kid.class);
+    setIsEditing(true);
   };
 
   // Cargar clases al iniciar la pantalla
@@ -120,7 +197,7 @@ export default function RegisterKid({ navigation }) {
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         {/* Título de la pantalla */}
-        <Text style={styles.title}>Registrar Nuevo Niño</Text>
+        <Text style={styles.title}>{isEditing ? "Editar Niño" : "Registrar Nuevo Niño"}</Text>
 
         {/* Campo de nombre */}
         <View style={styles.inputContainer}>
@@ -157,18 +234,67 @@ export default function RegisterKid({ navigation }) {
           </Text>
         </TouchableOpacity>
 
-        {/* Botón de registro */}
+        {/* Botón de registro o actualización */}
         <TouchableOpacity
           style={styles.registerButton}
-          onPress={registerKid}
+          onPress={saveKid}
           disabled={loading}
         >
           {loading ? (
             <ActivityIndicator size="small" color="#FFF" />
           ) : (
-            <Text style={styles.registerButtonText}>Registrar Niño</Text>
+            <Text style={styles.registerButtonText}>
+              {isEditing ? "Guardar Cambios" : "Registrar Niño"}
+            </Text>
           )}
         </TouchableOpacity>
+
+        {/* Botón para cargar niños */}
+        {!dataLoaded && (
+          <TouchableOpacity
+            style={styles.loadButton}
+            onPress={fetchKids}
+            disabled={loadingKids}
+          >
+            {loadingKids ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <Text style={styles.loadButtonText}>Cargar Niños</Text>
+            )}
+          </TouchableOpacity>
+        )}
+
+        {/* Lista de niños registrados */}
+        {dataLoaded && (
+          <>
+            <Text style={styles.listHeader}>Niños Registrados</Text>
+            <FlatList
+              data={kids}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <View style={styles.kidItem}>
+                  <Text style={styles.kidName}>{item.name}</Text>
+                  <Text style={styles.kidDetails}>Fecha de nacimiento: {item.birthDay}</Text>
+                  <Text style={styles.kidDetails}>Clase: {item.class}</Text>
+                  <View style={styles.actionsContainer}>
+                    <TouchableOpacity
+                      style={styles.actionButton}
+                      onPress={() => editKid(item)}
+                    >
+                      <Icon name="edit" size={20} color="#4CAF50" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.actionButton}
+                      onPress={() => confirmDeleteKid(item.id)}
+                    >
+                      <Icon name="delete" size={20} color="#FF5722" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            />
+          </>
+        )}
       </ScrollView>
 
       {/* Modal para seleccionar clase */}
@@ -275,6 +401,23 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#FFF",
   },
+  loadButton: {
+    backgroundColor: "#4CAF50",
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  loadButtonText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#FFF",
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
@@ -301,5 +444,41 @@ const styles = StyleSheet.create({
   classItemText: {
     fontSize: 16,
     color: "#333",
+  },
+  listHeader: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#333",
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  kidItem: {
+    backgroundColor: "#FFF",
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  kidName: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  kidDetails: {
+    fontSize: 16,
+    color: "#666",
+    marginTop: 5,
+  },
+  actionsContainer: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 10,
+  },
+  actionButton: {
+    marginLeft: 10,
   },
 });

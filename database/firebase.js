@@ -10,7 +10,7 @@ const firebaseConfig = {
     projectId: "ibbac-attendance-ii",
     storageBucket: "ibbac-attendance-ii.firebasestorage.app",
     messagingSenderId: "740043364983",
-    appId: "1:740043364983:web:3e8e6779354e68cec24472",
+    appId: "1:740043364983:web:3e8e6779354e68cec24472"
 };
 
 // Inicializa la aplicación de Firebase
