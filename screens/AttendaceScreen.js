@@ -108,6 +108,7 @@ export default function AttendanceScreen() {
       ]
     );
   };
+  //
 
   // Función para cargar la lista de personas
   const fetchPeople = async () => {
