@@ -46,6 +46,7 @@ export default function KidsScreen({ navigation }) {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.header}>Kids</Text>
       {/* Card de Registro */}
       <TouchableOpacity onPress={() => navigation.navigate("RegisterKid")}>
         <LinearGradient
@@ -92,7 +93,7 @@ export default function KidsScreen({ navigation }) {
                   style={styles.classItem}
                   onPress={() => {
                     setShowClassPicker(false);
-                    navigation.navigate("Attendance", { classRoom: classItem.name });
+                    navigation.navigate("SelectDateAndSessionScreen", { classRoom: classItem.name });
                   }}
                 >
                   <Text style={styles.classItemText}>{classItem.name}</Text>
@@ -107,10 +108,18 @@ export default function KidsScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  header: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#000',
+    marginBottom: 16,
+    marginTop: 30,
+  },
   container: {
     flexGrow: 1,
     padding: 16,
     backgroundColor: "#F5F5F5",
+    
   },
   card: {
     borderRadius: 15,

@@ -7,6 +7,7 @@ import AttendanceStackNavigator from './AttendanceStackNavigator';
 import SettingsScreen from '../screens/SettingsScreen';
 import Home from '../screens/Home';
 import KidsScreen from '../screens/KidsScreen';
+import KidsAttendanceStackNavigation from './KidsAttendanceStackNavigation';
 
 const Tab = createBottomTabNavigator();
 
@@ -42,7 +43,7 @@ const BottomTabs = () => {
         <Tab.Screen name="Registro" component={AttendanceScreen} />
         <Tab.Screen name="Reportes" component={ReportStackNavigation} />
         <Tab.Screen name="Asistencia" component={AttendanceStackNavigator} />
-        <Tab.Screen name="Kids" component={KidsScreen} />
+        <Tab.Screen name="Kids" component={KidsAttendanceStackNavigation} />
         <Tab.Screen name="Ajustes" component={SettingsScreen} />
    
       </Tab.Navigator>
