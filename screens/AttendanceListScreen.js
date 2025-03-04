@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, Switch, Button, TextInput, ActivityIndicator, SectionList } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Switch, Button, TextInput, ActivityIndicator } from 'react-native';
 import { db } from '../database/firebase';
 import { getDocs, collection, addDoc, query, where, updateDoc } from 'firebase/firestore';
 
 export default function AttendanceListScreen({ route }) {
   const { date, session } = route.params;
   const [people, setPeople] = useState([]); // Lista de adultos
-  const [kids, setKids] = useState([]); // Lista de niños
   const [attendance, setAttendance] = useState({}); // Estado de asistencia
   const [searchText, setSearchText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,23 +24,6 @@ export default function AttendanceListScreen({ route }) {
       setPeople(sortedPeople);
     } catch (error) {
       console.error('Error al cargar personas:', error);
-    }
-  };
-
-  // Función para cargar niños desde Firestore
-  const fetchKids = async () => {
-    try {
-      const snapshot = await getDocs(collection(db, 'kids'));
-      const kidsList = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-
-      // Ordenar por nombre en orden alfabético
-      const sortedKids = kidsList.sort((a, b) => a.name.localeCompare(b.name));
-      setKids(sortedKids);
-    } catch (error) {
-      console.error('Error al cargar niños:', error);
     }
   };
 
@@ -66,7 +48,6 @@ export default function AttendanceListScreen({ route }) {
 
   useEffect(() => {
     fetchPeople();
-    fetchKids();
     fetchAttendance();
   }, []);
 
@@ -83,7 +64,7 @@ export default function AttendanceListScreen({ route }) {
     setLoading(true);
 
     try {
-      // Guardamos o actualizamos la asistencia de cada persona (adultos y niños)
+      // Guardamos o actualizamos la asistencia de cada persona
       for (const personId in attendance) {
         const attendanceRef = collection(db, 'attendance');
         const attendanceQuery = query(
@@ -132,31 +113,10 @@ export default function AttendanceListScreen({ route }) {
       .toLowerCase(); // Convierte a minúsculas
   };
 
-  // Filtrar personas y niños según el texto de búsqueda
+  // Filtrar personas según el texto de búsqueda
   const filteredPeople = people.filter((person) =>
     normalizeText(person.name).includes(normalizeText(searchText))
   );
-  const filteredKids = kids.filter((kid) =>
-    normalizeText(kid.name).includes(normalizeText(searchText))
-  );
-
-  // Agrupar niños por clase
-  const kidsByClass = filteredKids.reduce((acc, kid) => {
-    if (!acc[kid.class]) {
-      acc[kid.class] = [];
-    }
-    acc[kid.class].push(kid);
-    return acc;
-  }, {});
-
-  // Convertir el objeto de niños agrupados en un array para SectionList
-  const sections = [
-    { title: 'Adultos', data: filteredPeople },
-    ...Object.keys(kidsByClass).map((classRoom) => ({
-      title: `Niños - Clase: ${classRoom}`,
-      data: kidsByClass[classRoom],
-    })),
-  ];
 
   return (
     <View style={styles.container}>
@@ -172,9 +132,9 @@ export default function AttendanceListScreen({ route }) {
         onChangeText={(text) => setSearchText(text)}
       />
 
-      {/* Lista de personas y niños con la opción de asistencia */}
-      <SectionList
-        sections={sections}
+      {/* Lista de personas con la opción de asistencia */}
+      <FlatList
+        data={filteredPeople}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View style={styles.personItem}>
@@ -189,9 +149,6 @@ export default function AttendanceListScreen({ route }) {
               {attendance[item.id] ? 'Asistió' : 'No asistió'}
             </Text>
           </View>
-        )}
-        renderSectionHeader={({ section }) => (
-          <Text style={styles.sectionHeader}>{section.title}</Text>
         )}
       />
 
@@ -253,14 +210,6 @@ const styles = StyleSheet.create({
   attendanceStatus: {
     fontSize: 16,
     color: '#777',
-  },
-  sectionHeader: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    backgroundColor: '#e0e0e0',
-    padding: 10,
-    marginTop: 10,
-    borderRadius: 8,
   },
   saveButtonContainer: {
     marginTop: 20,
