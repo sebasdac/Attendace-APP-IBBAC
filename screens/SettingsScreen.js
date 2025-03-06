@@ -6,6 +6,9 @@ import * as Sharing from 'expo-sharing';
 import XLSX from 'xlsx';
 import * as DocumentPicker from 'expo-document-picker';
 import { collection, getDocs, writeBatch, doc, Timestamp } from 'firebase/firestore'; // Importa correctamente writeBatch
+import { useAuth } from '../navigation/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 // Función para convertir ArrayBuffer a base64//
 const arrayBufferToBase64 = (buffer) => {
@@ -18,9 +21,14 @@ const arrayBufferToBase64 = (buffer) => {
   return window.btoa(binary);
 };
 
+ 
+
+  
+
 const SettingsScreen = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { setUser } = useAuth(); // 📌 Obtenemos `setUser` para actualizar el contexto
 
   // Función para convertir Timestamp a formato dd/mm/aaaa
 const formatDate = (timestamp) => {
@@ -32,6 +40,17 @@ const formatDate = (timestamp) => {
   }
   return ''; // Devolver vacío si no es un timestamp válido
 };
+  // 📌 Función para cerrar sesión
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.removeItem('user'); // Elimina la sesión de AsyncStorage
+      setUser(null); // 📌 Actualiza el contexto para que detecte que el usuario cerró sesión
+    
+    } catch (error) {
+      Alert.alert('Error', 'Hubo un problema al cerrar sesión.');
+      console.error('Error al cerrar sesión:', error);
+    }
+  };
 
   const exportarPersonas = async () => {
     setIsExporting(true);
@@ -219,6 +238,10 @@ const excelDateToJSDate = (excelDate) => {
           onPress={handleImport}
           disabled={loading}
         />
+      </View>
+        {/* 📌 Botón para Cerrar Sesión */}
+      <View style={styles.buttonContainer}>
+        <Button title="Cerrar Sesión" color="red" onPress={handleLogout} />
       </View>
 
       <Text style={infoStyle}>Version : 3.0.1v Iglesia Biblica Bautista Agua Caliente. Attendance App</Text> 

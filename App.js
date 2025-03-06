@@ -1,23 +1,44 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Animated } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Animated, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import BottomTabs from './navigation/BottomTabs';
 import BirthdayNotification from './components/BirthdayNotification';
 import * as Updates from 'expo-updates';
 import LoginStackNavigation from './navigation/LoginStackNavigation';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { db } from './database/firebase';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-
+import { AuthProvider, useAuth } from './navigation/AuthContext';
 
 const Stack = createStackNavigator();
 
+function MainNavigator() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0000ff" />
+        <Text>Cargando...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      {user ? (
+        <Stack.Screen name="BottomTabs">
+          {() => <BottomTabs />}
+        </Stack.Screen>
+      ) : (
+        <Stack.Screen name="LoginStack" component={LoginStackNavigation} />
+      )}
+    </Stack.Navigator>
+  );
+}
+
+
 export default function App() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
-  const [bannerAnimation] = useState(new Animated.Value(-100)); // Para animar el banner
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [bannerAnimation] = useState(new Animated.Value(-100));
 
   useEffect(() => {
     const checkForUpdate = async () => {
@@ -25,7 +46,6 @@ export default function App() {
         const update = await Updates.checkForUpdateAsync();
         if (update.isAvailable) {
           setUpdateAvailable(true);
-          // Mostrar el banner con animación
           Animated.timing(bannerAnimation, {
             toValue: 0,
             duration: 500,
@@ -40,37 +60,6 @@ export default function App() {
     checkForUpdate();
   }, []);
 
-  useEffect(() => {
-    const checkUser = async () => {
-      try {
-        const storedUser = await AsyncStorage.getItem('user');
-        if (storedUser) {
-          const parsedUser = JSON.parse(storedUser);
-          const usersRef = collection(db, 'usuarios');
-          const q = query(usersRef, 
-            where('email', '==', parsedUser.email), 
-            where('password', '==', parsedUser.password) // Verifica también la contraseña
-          );
-          const querySnapshot = await getDocs(q);
-  
-          if (!querySnapshot.empty) {
-            console.log("✅ El usuario y la contraseña son correctos.");
-            setUser(parsedUser);
-          } else {
-            console.log("❌ Usuario o contraseña incorrectos, cerrando sesión.");
-            await AsyncStorage.removeItem('user');
-            setUser(null);
-          }
-        }
-      } catch (error) {
-        console.log("⚠️ Error al verificar sesión:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    checkUser();
-  }, []);
-  
   const applyUpdate = async () => {
     try {
       await Updates.fetchUpdateAsync();
@@ -80,32 +69,15 @@ export default function App() {
     }
   };
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>Cargando...</Text>
-      </View>
-    );
-  }
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {user ? (
-          <Stack.Screen name="BottomTabs" component={BottomTabs} />
-          
-          
-        ) : (
-          <Stack.Screen name="LoginStack" component={LoginStackNavigation} />
-        )}
-       
-      </Stack.Navigator>
-      
+    <AuthProvider>
+      <NavigationContainer>
+        <MainNavigator />
+      </NavigationContainer>
+
       {updateAvailable && (
         <Animated.View
-          style={[
-            styles.updateBanner,
-            { transform: [{ translateY: bannerAnimation }] },
-          ]}
+          style={[styles.updateBanner, { transform: [{ translateY: bannerAnimation }] }]}
         >
           <Text style={styles.updateText}>¡Actualización disponible!</Text>
           <TouchableOpacity style={styles.updateButton} onPress={applyUpdate}>
@@ -113,16 +85,16 @@ export default function App() {
           </TouchableOpacity>
         </Animated.View>
       )}
-       <BirthdayNotification/>
-    </NavigationContainer>
+      <BirthdayNotification />
+    </AuthProvider>
   );
-
 }
 
 const styles = StyleSheet.create({
-  container: {
+  loadingContainer: {
     flex: 1,
-    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   updateBanner: {
     position: 'absolute',
@@ -139,7 +111,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 5,
     elevation: 5,
-    marginTop:30,
+    marginTop: 30,
   },
   updateText: {
     color: '#fff',

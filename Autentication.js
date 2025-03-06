@@ -3,11 +3,13 @@ import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, ActivityInd
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db } from './database/firebase';
+import { useAuth } from './navigation/AuthContext'; // 📌 Importa useAuth()
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const { setUser } = useAuth(); // 📌 Obtiene `setUser` de AuthContext
 
   const handleLogin = async () => {
     setLoading(true);
@@ -15,26 +17,29 @@ const LoginScreen = ({ navigation }) => {
       const usersRef = collection(db, 'usuarios');
       const q = query(usersRef, where('email', '==', email));
       const querySnapshot = await getDocs(q);
-
+  
       if (querySnapshot.empty) {
         Alert.alert('Error', 'Usuario no encontrado');
         setLoading(false);
         return;
       }
-
+  
       let userData = null;
       querySnapshot.forEach((doc) => {
         userData = { id: doc.id, ...doc.data() };
       });
-
+  
       if (userData.password !== password) {
         Alert.alert('Error', 'Contraseña incorrecta');
         setLoading(false);
         return;
       }
-
+  
       // Guardar sesión en AsyncStorage
       await AsyncStorage.setItem('user', JSON.stringify(userData));
+
+      // 📌 ACTUALIZAR `user` en el contexto para que se refleje inmediatamente
+      setUser(userData);
 
       Alert.alert('Inicio de sesión exitoso', 'Bienvenido');
       navigation.reset({
@@ -47,7 +52,6 @@ const LoginScreen = ({ navigation }) => {
       setLoading(false);
     }
   };
-
   return (
     <View style={styles.container}>
       <View style={styles.card}>
