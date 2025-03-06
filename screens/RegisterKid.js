@@ -25,7 +25,8 @@ export default function RegisterKid({ navigation }) {
   const [selectedClasses, setSelectedClasses] = useState([]); // Array de clases seleccionadas
   const [classes, setClasses] = useState([]); // Lista de clases desde Firestore
   const [loading, setLoading] = useState(false);
-  const [showClassPicker, setShowClassPicker] = useState(false); // Modal para seleccionar clase
+  const [showClassPicker, setShowClassPicker] = useState(false); // Modal para seleccionar clase en el formulario
+  const [showFilterClassPicker, setShowFilterClassPicker] = useState(false); // Modal para seleccionar clase en el filtro
   const [kids, setKids] = useState([]); // Lista de niños
   const [filteredKids, setFilteredKids] = useState([]); // Lista de niños filtrados
   const [isEditing, setIsEditing] = useState(false); // Modo edición
@@ -311,7 +312,7 @@ export default function RegisterKid({ navigation }) {
             />
             <TouchableOpacity
               style={styles.classPickerButton}
-              onPress={() => setShowClassPicker(true)}
+              onPress={() => setShowFilterClassPicker(true)}
             >
               <Icon name="class" size={24} color="#666" style={styles.icon} />
               <Text style={styles.classPickerText}>
@@ -354,7 +355,7 @@ export default function RegisterKid({ navigation }) {
         )}
       </ScrollView>
 
-      {/* Modal para seleccionar clases */}
+      {/* Modal para seleccionar clases en el formulario */}
       <Modal
         visible={showClassPicker}
         transparent={true}
@@ -372,11 +373,7 @@ export default function RegisterKid({ navigation }) {
                 key={classItem.id}
                 style={styles.classItem}
                 onPress={() => {
-                  if (showFilters) {
-                    setSearchClass(classItem.name); // Seleccionar clase para filtrar
-                  } else {
-                    toggleClassSelection(classItem); // Seleccionar clase para registro
-                  }
+                  toggleClassSelection(classItem); // Seleccionar clase para registro
                   setShowClassPicker(false);
                 }}
               >
@@ -387,7 +384,38 @@ export default function RegisterKid({ navigation }) {
               </TouchableOpacity>
             ))}
           </ScrollView>
+        </View>
+      </Modal>
 
+      {/* Modal para seleccionar clases en el filtro */}
+      <Modal
+        visible={showFilterClassPicker}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowFilterClassPicker(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowFilterClassPicker(false)}>
+          <View style={styles.modalOverlay} />
+        </TouchableWithoutFeedback>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Selecciona una Clase para Filtrar</Text>
+          <ScrollView>
+            {classes.map((classItem) => (
+              <TouchableOpacity
+                key={classItem.id}
+                style={styles.classItem}
+                onPress={() => {
+                  setSearchClass(classItem.name); // Seleccionar clase para filtrar
+                  setShowFilterClassPicker(false);
+                }}
+              >
+                <Text style={styles.classItemText}>{classItem.name}</Text>
+                {searchClass === classItem.name && (
+                  <Icon name="check" size={20} color="#4CAF50" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
       </Modal>
     </KeyboardAvoidingView>

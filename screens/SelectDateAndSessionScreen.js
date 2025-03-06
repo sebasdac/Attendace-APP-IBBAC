@@ -19,18 +19,26 @@ export default function SelectDateAndSessionScreen() {
     }
   };
 
-  // Función para navegar a la pantalla de asistencia
-  const navigateToAttendance = () => {
-    if (!session) {
-      alert("Por favor, selecciona una sesión (AM/PM).");
-      return;
-    }
-    navigation.navigate("KidsAttendanceScreen", {
-      classRoom, // Clase seleccionada
-      date: date.toISOString().split("T")[0], // Formato YYYY-MM-DD
-      session, // Sesión seleccionada
-    });
-  };
+  // Función para formatear la fecha en YYYY-MM-DD
+const formatDate = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0'); // Los meses son base 0
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Función para navegar a la pantalla de asistencia
+const navigateToAttendance = () => {
+  if (!session) {
+    alert("Por favor, selecciona una sesión (AM/PM).");
+    return;
+  }
+  navigation.navigate("KidsAttendanceScreen", {
+    classRoom, // Clase seleccionada
+    date: formatDate(date), // Formato YYYY-MM-DD
+    session, // Sesión seleccionada
+  });
+};
 
   return (
     <View style={styles.container}>
