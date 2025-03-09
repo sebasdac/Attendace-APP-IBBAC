@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Image,
+  TouchableOpacity,
 } from "react-native";
 import { BarChart, LineChart } from "react-native-chart-kit";
 import { Ionicons } from "@expo/vector-icons";
@@ -30,7 +31,9 @@ const Dashboard = () => {
   const [lastSession, setLastSession] = useState(null);
   const [top3Attendees, setTop3Attendees] = useState([]);
   const [monthlyAttendance, setMonthlyAttendance] = useState([]);
-  const [loading, setLoading] = useState(true); // Estado de carga
+  const [loading, setLoading] = useState(false); // Estado de carga
+  const [shouldLoadData, setShouldLoadData] = useState(false); // Estado para controlar la carga de datos
+  const [dataLoaded, setDataLoaded] = useState(false); // Estado para controlar si los datos han sido cargados
   const monthNames = [
     "ene",
     "feb",
@@ -48,22 +51,30 @@ const Dashboard = () => {
   const rotation = useSharedValue(0);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true); // Inicia la carga
-        await fetchTop3Attendees();
-        await fetchLastSession();
-        await fetchMonthlyAttendance();
-      } catch (error) {
-        console.error("Error al cargar los datos:", error);
-      } finally {
-        setLoading(false); // Finaliza la carga
-      }
-    };
+    if (shouldLoadData) {
+      const fetchData = async () => {
+        try {
+          setLoading(true); // Inicia la carga
+          await fetchTop3Attendees();
+          await fetchLastSession();
+          await fetchMonthlyAttendance();
+        } catch (error) {
+          console.error("Error al cargar los datos:", error);
+        } finally {
+          setLoading(false); // Finaliza la carga
+          setShouldLoadData(false); // Resetea el estado de carga
+        }
+      };
+  
+      fetchData();
+    }
+  }, [shouldLoadData]); // Dependencia de shouldLoadData
 
-    fetchData();
-  }, []);
-
+  const handleLoadStatistics = () => {
+    setShouldLoadData(true); // Activa la carga de datos
+    setDataLoaded(true); // Indica que los datos han sido cargados
+    setLoading(true)
+  };
   const fetchTop3Attendees = async () => {
     try {
       const attendanceRef = collection(db, "attendance");
@@ -165,6 +176,7 @@ const Dashboard = () => {
       }));
 
       setMonthlyAttendance(formattedData); // Guardar los datos formateados en el estado
+      
     } catch (error) {
       console.error("Error fetching monthly attendance:", error);
     }
@@ -198,65 +210,83 @@ const Dashboard = () => {
         Principal
       </Text>
   
-      {/* Fila con dos tarjetas */}
-      <View style={styles.row}>
-        <DashboardCard
-          title="Top 3 Asistentes"
-          top3Data={top3Attendees}
-          cardStyle={styles.dashboardCard}
-        />
-        {lastSession && (
-          <View style={styles.lastSessionCard}>
-            <View style={styles.iconWrapper}>
-              <Ionicons name="calendar-outline" style={styles.icon} />
-            </View>
-            <Text style={styles.lastSessionTitle}>{lastSession.attended}</Text>
-            <Text style={styles.subtitle}>Asistencia del último culto</Text>
-            <Text style={styles.details}>
-              Fecha: {lastSession.date} - Sesión: {lastSession.session}
-            </Text>
+      {/* Botón para cargar estadísticas */}
+      {!dataLoaded && (
+        <TouchableOpacity style={styles.loadButton} onPress={handleLoadStatistics}>
+          <Text style={styles.loadButtonText}>Cargar estadísticas</Text>
+        </TouchableOpacity>
+      )}
+    
+      {/* Renderizado condicional de los gráficos y componentes */}
+      {dataLoaded && ( // Solo renderiza si dataLoaded es true
+        <>
+          {/* Fila con dos tarjetas */}
+          <View style={styles.row}>
+            <DashboardCard
+              title="Top 3 Asistentes"
+              top3Data={top3Attendees || []} // Si top3Attendees es null o undefined, usa un array vacío
+              cardStyle={styles.dashboardCard}
+            />
+            {lastSession ? ( // Solo renderiza si lastSession existe
+              <View style={styles.lastSessionCard}>
+                <View style={styles.iconWrapper}>
+                  <Ionicons name="calendar-outline" style={styles.icon} />
+                </View>
+                <Text style={styles.lastSessionTitle}>{lastSession.attended}</Text>
+                <Text style={styles.subtitle}>Asistencia del último culto</Text>
+                <Text style={styles.details}>
+                  Fecha: {lastSession.date} - Sesión: {lastSession.session}
+                </Text>
+              </View>
+            ) : (
+              <Text style={styles.subtitle}>No hay datos de la última sesión</Text>
+            )}
           </View>
-        )}
-      </View>
   
-      {/* Gráfico de asistencia anual */}
-      <View style={styles.chartContainer}>
-        <Text style={styles.chartTitle}>Asistencia anual</Text>
-        <LineChart
-          data={{
-            labels: monthNames.filter((_, index) => index % 2 === 0),
-            datasets: [
-              {
-                data: monthlyAttendance.map((item) => item.count),
-                color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                strokeWidth: 2,
-              },
-            ],
-          }}
-          width={Dimensions.get("window").width * 0.9}
-          height={220}
-          yAxisInterval={10}
-          chartConfig={{
-            backgroundColor: "#ffffff",
-            backgroundGradientFrom: "#ffffff",
-            backgroundGradientTo: "#ffffff",
-            decimalPlaces: 0,
-            color: (opacity = 1) => `rgba(200, 200, 200, ${opacity})`,
-            labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-            style: { borderRadius: 16 },
-            propsForDots: {
-              r: "4",
-              strokeWidth: "2",
-              stroke: "#ffffff",
-            },
-            propsForBackgroundLines: {
-              strokeDasharray: "",
-            },
-          }}
-          bezier
-          style={styles.chart}
-        />
-      </View>
+          {/* Gráfico de asistencia anual */}
+          <View style={styles.chartContainer}>
+            <Text style={styles.chartTitle}>Asistencia anual</Text>
+            {monthlyAttendance && monthlyAttendance.length > 0 ? ( // Solo renderiza si hay datos
+              <LineChart
+                data={{
+                  labels: monthNames.filter((_, index) => index % 2 === 0),
+                  datasets: [
+                    {
+                      data: monthlyAttendance.map((item) => item.count),
+                      color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                      strokeWidth: 2,
+                    },
+                  ],
+                }}
+                width={Dimensions.get("window").width * 0.9}
+                height={220}
+                yAxisInterval={10}
+                chartConfig={{
+                  backgroundColor: "#ffffff",
+                  backgroundGradientFrom: "#ffffff",
+                  backgroundGradientTo: "#ffffff",
+                  decimalPlaces: 0,
+                  color: (opacity = 1) => `rgba(200, 200, 200, ${opacity})`,
+                  labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                  style: { borderRadius: 16 },
+                  propsForDots: {
+                    r: "4",
+                    strokeWidth: "2",
+                    stroke: "#ffffff",
+                  },
+                  propsForBackgroundLines: {
+                    strokeDasharray: "",
+                  },
+                }}
+                bezier
+                style={styles.chart}
+              />
+            ) : (
+              <Text style={styles.subtitle}>No hay datos para mostrar</Text>
+            )}
+          </View>
+        </>
+      )}
     </View>
   );
 };
@@ -363,6 +393,21 @@ const styles = StyleSheet.create({
   chart: {
     marginVertical: 8,
     borderRadius: 16,
+  },
+  loadButton: {
+    backgroundColor: "#007aff", // Color de fondo del botón
+    padding: 15, // Espaciado interno
+    borderRadius: 10, // Bordes redondeados
+    alignSelf: "center", // Centra el botón horizontalmente
+    marginTop: 20, // Margen superior
+    width: "60%", // Ancho del botón (puedes ajustarlo)
+    justifyContent: "center", // Centra el texto verticalmente
+    alignItems: "center", // Centra el texto horizontalmente
+  },
+  loadButtonText: {
+    color: "#fff", // Color del texto
+    fontSize: 16, // Tamaño del texto
+    fontWeight: "bold", // Texto en negrita
   },
 });
 
