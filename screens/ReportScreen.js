@@ -6,6 +6,7 @@ import DateTimePicker from "@react-native-community/datetimepicker"; // Instala 
 import { db } from '../database/firebase';
 import { collection, query, where, getDocs } from "firebase/firestore";
 
+
 const AnalyticsScreen = () => {
   const [attendanceCounts, setAttendanceCounts] = useState({ AM: 0, PM: 0 }); // Asistencias por sesión
   const [selectedDate, setSelectedDate] = useState(new Date()); // Fecha seleccionada
@@ -25,7 +26,7 @@ const AnalyticsScreen = () => {
   const fetchAttendanceData = async () => {
     try {
       let q = collection(db, "attendance");
-  
+    
       // Formatear la fecha seleccionada en la zona horaria local
       const localDate = new Date(selectedDate.getTime() + Math.abs(selectedDate.getTimezoneOffset() * 60000));
       const dateString = localDate.toISOString().split("T")[0];
@@ -86,6 +87,7 @@ const AnalyticsScreen = () => {
       setPeople(peopleList);
       setFilteredPeople(peopleList); // Inicialmente, mostrar toda la lista
       setDataLoaded(true); // Marca que los datos se han cargado
+    
     } catch (error) {
       console.error('Error al cargar personas:', error);
     } finally {
@@ -116,6 +118,7 @@ if (loading) {
     </View>
   );
 }
+
   
 
 return (

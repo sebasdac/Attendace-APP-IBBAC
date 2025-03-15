@@ -20,6 +20,7 @@ import {
 } from "firebase/firestore";
 import DashboardCard from "../components/DashboardCard";
 import { db } from "../database/firebase"; // Importa tu configuración de Firebase
+
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -50,6 +51,9 @@ const Dashboard = () => {
   ];
   const rotation = useSharedValue(0);
 
+ 
+
+
   useEffect(() => {
     if (shouldLoadData) {
       const fetchData = async () => {
@@ -58,6 +62,7 @@ const Dashboard = () => {
           await fetchTop3Attendees();
           await fetchLastSession();
           await fetchMonthlyAttendance();
+          
         } catch (error) {
           console.error("Error al cargar los datos:", error);
         } finally {

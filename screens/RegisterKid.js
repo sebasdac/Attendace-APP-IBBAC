@@ -13,11 +13,14 @@ import {
   TouchableWithoutFeedback,
   Alert,
   FlatList,
+  Button,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient"; // Para los gradientes
 import Icon from "react-native-vector-icons/MaterialIcons"; // Para los íconos
 import { db } from "../database/firebase";
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc } from "firebase/firestore";
+import { Switch } from "react-native"; // Importa el Switch
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function RegisterKid({ navigation }) {
   const [name, setName] = useState("");
@@ -36,6 +39,21 @@ export default function RegisterKid({ navigation }) {
   const [searchName, setSearchName] = useState(""); // Filtro por nombre
   const [searchClass, setSearchClass] = useState(""); // Filtro por clase
   const [showFilters, setShowFilters] = useState(false); // Mostrar campos de búsqueda
+  const [isNew, setIsNew] = useState(false); // Estado para "¿Es nuevo?"
+   const [showNewOptionNotice, setShowNewOptionNotice] = useState(false);//para mostral modal
+
+
+
+  useEffect(() => {
+    const checkIfNoticeWasShown = async () => {
+      const noticeShown = await AsyncStorage.getItem("newOptionNoticeShownKids");
+      if (!noticeShown) {
+        setShowNewOptionNotice(true); // Mostrar el aviso si no se ha mostrado antes
+      }
+    };
+  
+    checkIfNoticeWasShown();
+    }, []);
 
   // Función para validar la fecha de nacimiento
   const validateDate = (date) => {
@@ -126,6 +144,7 @@ export default function RegisterKid({ navigation }) {
         await updateDoc(doc(db, "kids", selectedKid.id), {
           name,
           birthDay,
+          isNew,
           classes: selectedClasses, // Guardar el array de clases
         });
         Alert.alert("Éxito", "Niño actualizado con éxito");
@@ -136,6 +155,7 @@ export default function RegisterKid({ navigation }) {
           birthDay,
           classes: selectedClasses, // Guardar el array de clases
           isKid: true,
+          isNew,
           createdAt: new Date(),
         });
         Alert.alert("Éxito", "Niño registrado con éxito");
@@ -147,6 +167,7 @@ export default function RegisterKid({ navigation }) {
       setSelectedClasses([]);
       setIsEditing(false);
       setSelectedKid(null);
+      setIsNew(false);
       fetchKids();
     } catch (error) {
       Alert.alert("Error", `Error al ${isEditing ? "actualizar" : "registrar"}: ${error.message}`);
@@ -158,6 +179,7 @@ export default function RegisterKid({ navigation }) {
   // Función para eliminar un niño
   const deleteKid = async (id) => {
     try {
+      
       await deleteDoc(doc(db, "kids", id));
       Alert.alert("Éxito", "Niño eliminado con éxito");
       fetchKids();
@@ -187,10 +209,12 @@ export default function RegisterKid({ navigation }) {
 
   // Función para editar un niño
   const editKid = (kid) => {
+    
     setSelectedKid(kid);
     setName(kid.name);
     setBirthDay(kid.birthDay);
     setSelectedClasses(kid.classes); // Cargar las clases seleccionadas
+    setIsNew(kid.isNew || false); // Cargar el valor de isNew
     setIsEditing(true);
   };
 
@@ -225,6 +249,9 @@ export default function RegisterKid({ navigation }) {
     fetchClasses();
   }, []);
 
+
+    
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -257,6 +284,7 @@ export default function RegisterKid({ navigation }) {
             maxLength={10}
           />
         </View>
+        
 
         {/* Selector de clases */}
         <TouchableOpacity
@@ -270,6 +298,16 @@ export default function RegisterKid({ navigation }) {
               : "Selecciona una o más clases"}
           </Text>
         </TouchableOpacity>
+         {/* Switch para "¿Es nuevo?" */}
+         <View style={styles.switchContainer}>
+          <Text>¿Es nuevo?</Text>
+          <Switch
+            value={isNew} // El valor del Switch está vinculado al estado isNew
+            onValueChange={(value) => setIsNew(value)} // Actualiza el estado isNew cuando el usuario cambia el Switch
+            trackColor={{ false: "#767577", true: "#81b0ff" }}
+            thumbColor={isNew ? "#f5dd4b" : "#f4f3f4"}
+          />
+        </View>
 
         {/* Botón de registro o actualización */}
         <TouchableOpacity
@@ -334,6 +372,7 @@ export default function RegisterKid({ navigation }) {
                   <Text style={styles.kidName}>{item.name}</Text>
                   <Text style={styles.kidDetails}>Fecha de nacimiento: {item.birthDay}</Text>
                   <Text style={styles.kidDetails}>Clases: {item.classes.join(", ")}</Text>
+                  {item.isNew && <Text style={styles.isNew}>Es nuevo</Text>}
                   <View style={styles.actionsContainer}>
                     <TouchableOpacity
                       style={styles.actionButton}
@@ -418,6 +457,30 @@ export default function RegisterKid({ navigation }) {
           </ScrollView>
         </View>
       </Modal>
+      <Modal
+        visible={showNewOptionNotice}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowNewOptionNotice(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowNewOptionNotice(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>¡Nueva Opción!</Text>
+              <Text style={styles.modalText}>
+                Ahora puedes marcar a las personas como "nuevos" usando la opción "¿Es nuevo?".
+              </Text>
+              <Button
+                title="Entendido"
+                onPress={() => {
+                  AsyncStorage.setItem("newOptionNoticeShownKids", "true"); // Marcar que el aviso fue mostrado
+                  setShowNewOptionNotice(false);
+                }}
+              />
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>;
     </KeyboardAvoidingView>
   );
 }
@@ -467,7 +530,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 15,
     paddingVertical: 15,
-    marginBottom: 20,
+    marginBottom: 15,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -579,6 +642,11 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#333",
   },
+  isNew: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#008f39",
+  },
   kidDetails: {
     fontSize: 16,
     color: "#666",
@@ -592,4 +660,47 @@ const styles = StyleSheet.create({
   actionButton: {
     marginLeft: 10,
   },
+
+    switchContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      backgroundColor: "#FFF",
+      borderRadius: 10,
+      paddingHorizontal: 15,
+      paddingVertical: 15,
+      marginBottom: 20,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
+      elevation: 3,
+      height : 50,
+    },
+    modalOverlay: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+    },
+    modalContent: {
+      backgroundColor: "#FFF",
+      borderRadius: 10,
+      padding: 20,
+      width: "80%",
+      alignItems: "center",
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: "bold",
+      marginBottom: 10,
+      color: "#333",
+    },
+    modalText: {
+      fontSize: 16,
+      textAlign: "center",
+      marginBottom: 20,
+      color: "#666",
+    },
+
 });

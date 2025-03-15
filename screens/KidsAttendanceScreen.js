@@ -11,6 +11,7 @@ import {
 import { db } from "../database/firebase";
 import { collection, getDocs, addDoc, query, where, updateDoc } from "firebase/firestore";
 
+
 export default function KidsAttendanceScreen({ route }) {
   const { classRoom, date, session } = route.params; // Parámetros recibidos
   const [kids, setKids] = useState([]); // Lista de niños de la clase seleccionada
@@ -67,6 +68,9 @@ export default function KidsAttendanceScreen({ route }) {
     }));
   };
 
+
+  
+
   // Función para guardar la asistencia en Firestore
   const saveAttendance = async () => {
     if (Object.keys(attendance).length === 0) {
@@ -87,7 +91,7 @@ export default function KidsAttendanceScreen({ route }) {
           where("session", "==", session),
           where("class", "==", classRoom)
         );
-
+        
         const existingAttendanceSnapshot = await getDocs(existingAttendanceQuery);
 
         if (existingAttendanceSnapshot.empty) {
