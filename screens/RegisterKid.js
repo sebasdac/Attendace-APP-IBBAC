@@ -464,9 +464,9 @@ export default function RegisterKid({ navigation }) {
         onRequestClose={() => setShowNewOptionNotice(false)}
       >
         <TouchableWithoutFeedback onPress={() => setShowNewOptionNotice(false)}>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>¡Nueva Opción!</Text>
+          <View style={styles.modalOverlayAviso}>
+            <View style={styles.modalContentAviso}>
+              <Text style={styles.modalTitleAviso}>¡Nueva Opción!</Text>
               <Text style={styles.modalText}>
                 Ahora puedes marcar a las personas como "nuevos" usando la opción "¿Es nuevo?".
               </Text>
@@ -677,20 +677,20 @@ const styles = StyleSheet.create({
       elevation: 3,
       height : 50,
     },
-    modalOverlay: {
+    modalOverlayAviso: {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
       backgroundColor: "rgba(0, 0, 0, 0.5)",
     },
-    modalContent: {
+    modalContentAviso: {
       backgroundColor: "#FFF",
       borderRadius: 10,
       padding: 20,
       width: "80%",
       alignItems: "center",
     },
-    modalTitle: {
+    modalTitleAviso: {
       fontSize: 20,
       fontWeight: "bold",
       marginBottom: 10,
