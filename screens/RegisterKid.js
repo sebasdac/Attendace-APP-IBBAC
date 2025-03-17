@@ -40,7 +40,13 @@ export default function RegisterKid({ navigation }) {
   const [searchClass, setSearchClass] = useState(""); // Filtro por clase
   const [showFilters, setShowFilters] = useState(false); // Mostrar campos de búsqueda
   const [isNew, setIsNew] = useState(false); // Estado para "¿Es nuevo?"
-   const [showNewOptionNotice, setShowNewOptionNotice] = useState(false);//para mostral modal
+  const [showNewOptionNotice, setShowNewOptionNotice] = useState(false);//para mostral modal
+
+  const [showSpecialNeedsModal, setShowSpecialNeedsModal] = useState(false); // Estado para mostrar/ocultar el modal
+  const [allergies, setAllergies] = useState(""); // Alergias
+  const [parentName, setParentName] = useState(""); // Nombre del padre
+  const [parentPhone, setParentPhone] = useState(""); // Teléfono del padre
+  const [specialCondition, setSpecialCondition] = useState(""); // Condición especial
 
 
 
@@ -130,37 +136,38 @@ export default function RegisterKid({ navigation }) {
       Alert.alert("Error", "Por favor, ingresa todos los campos");
       return;
     }
-
+  
     if (!validateDate(birthDay)) {
       Alert.alert("Error", "Por favor, ingresa una fecha válida en formato dd/mm/aaaa");
       return;
     }
-
+  
     try {
       setLoading(true);
-
+  
+      const kidData = {
+        name,
+        birthDay,
+        isNew,
+        classes: selectedClasses,
+        allergies,
+        parentName,
+        parentPhone,
+        specialCondition,
+        isKid: true,
+        createdAt: new Date(),
+      };
+  
       if (isEditing) {
         // Actualizar niño existente
-        await updateDoc(doc(db, "kids", selectedKid.id), {
-          name,
-          birthDay,
-          isNew,
-          classes: selectedClasses, // Guardar el array de clases
-        });
+        await updateDoc(doc(db, "kids", selectedKid.id), kidData);
         Alert.alert("Éxito", "Niño actualizado con éxito");
       } else {
         // Registrar nuevo niño
-        await addDoc(collection(db, "kids"), {
-          name,
-          birthDay,
-          classes: selectedClasses, // Guardar el array de clases
-          isKid: true,
-          isNew,
-          createdAt: new Date(),
-        });
+        await addDoc(collection(db, "kids"), kidData);
         Alert.alert("Éxito", "Niño registrado con éxito");
       }
-
+  
       // Limpiar el formulario y recargar la lista de niños
       setName("");
       setBirthDay("");
@@ -168,6 +175,10 @@ export default function RegisterKid({ navigation }) {
       setIsEditing(false);
       setSelectedKid(null);
       setIsNew(false);
+      setAllergies("");
+      setParentName("");
+      setParentPhone("");
+      setSpecialCondition("");
       fetchKids();
     } catch (error) {
       Alert.alert("Error", `Error al ${isEditing ? "actualizar" : "registrar"}: ${error.message}`);
@@ -308,6 +319,14 @@ export default function RegisterKid({ navigation }) {
             thumbColor={isNew ? "#f5dd4b" : "#f4f3f4"}
           />
         </View>
+
+        <TouchableOpacity
+          style={styles.specialNeedsButton}
+          onPress={() => setShowSpecialNeedsModal(true)} // Abrir el modal
+        >
+          <Icon name="accessible" size={24} color="#FFF" style={styles.icon} />
+          <Text style={styles.specialNeedsButtonText}>Necesidades Especiales</Text>
+        </TouchableOpacity>
 
         {/* Botón de registro o actualización */}
         <TouchableOpacity
@@ -457,6 +476,78 @@ export default function RegisterKid({ navigation }) {
           </ScrollView>
         </View>
       </Modal>
+
+
+     {/* modal de condiciones especiales*/}
+     {/* Modal para Necesidades Especiales */}
+<Modal
+  visible={showSpecialNeedsModal}
+  transparent={true}
+  animationType="slide"
+  onRequestClose={() => setShowSpecialNeedsModal(false)}
+>
+  <TouchableWithoutFeedback onPress={() => setShowSpecialNeedsModal(false)}>
+    <View style={styles.modalOverlayCondiciones} />
+  </TouchableWithoutFeedback>
+  <View style={styles.modalContentCondiciones}>
+    <Text style={styles.modalTitleCondiciones}>Necesidades Especiales</Text>
+
+    {/* Campo para alergias */}
+    <TextInput
+      style={styles.inputCondiciones}
+      placeholder="Alergias"
+      value={allergies}
+      onChangeText={setAllergies}
+    />
+
+    {/* Campo para nombre del padre */}
+    <TextInput
+      style={styles.inputCondiciones}
+      placeholder="Nombre del padre"
+      value={parentName}
+      onChangeText={setParentName}
+    />
+
+    {/* Campo para teléfono del padre */}
+    <TextInput
+      style={styles.inputCondiciones}
+      placeholder="Teléfono del padre"
+      value={parentPhone}
+      onChangeText={setParentPhone}
+      keyboardType="phone-pad"
+    />
+
+    {/* Campo para condición especial */}
+    <TextInput
+      style={styles.inputCondiciones}
+      placeholder="Condición especial"
+      value={specialCondition}
+      onChangeText={setSpecialCondition}
+    />
+
+    {/* Botón para guardar los datos */}
+    <TouchableOpacity
+      style={styles.registerButton}
+      onPress={() => setShowSpecialNeedsModal(false)}
+    >
+      <Text style={styles.registerButtonText}>Guardar</Text>
+    </TouchableOpacity>
+  </View>
+</Modal>
+
+     {/* Fin Modal para Necesidades Especiales */}
+
+
+
+
+
+
+
+
+
+
+
+
       <Modal
         visible={showNewOptionNotice}
         transparent={true}
@@ -702,5 +793,67 @@ const styles = StyleSheet.create({
       marginBottom: 20,
       color: "#666",
     },
+    specialNeedsButton: {
+      backgroundColor: "#FF0000", // Color rojo
+      padding: 15,
+      borderRadius: 10,
+      alignItems: "center",
+      flexDirection: "row",
+      justifyContent: "center",
+      marginBottom: 20,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
+      elevation: 3,
+    },
+    specialNeedsButtonText: {
+      fontSize: 18,
+      fontWeight: "bold",
+      color: "#FFF",
+      marginLeft: 10,
+    },
+    modalContent: {
+  backgroundColor: "#FFF",
+  padding: 20,
+  borderTopLeftRadius: 20,
+  borderTopRightRadius: 20,
+  marginTop: "auto",
+},
+modalTitle: {
+  fontSize: 20,
+  fontWeight: "bold",
+  color: "#333",
+  marginBottom: 16,
+  textAlign: "center",
+},
+
+
+
+modalContentCondiciones: {
+  backgroundColor: "#FFF",
+  padding: 20,
+  borderTopLeftRadius: 20,
+  borderTopRightRadius: 20,
+  marginTop: "auto",
+},
+modalTitleCondiciones: {
+  fontSize: 20,
+  fontWeight: "bold",
+  color: "#333",
+  marginBottom: 16,
+  textAlign: "center",
+},
+inputCondiciones: {
+  backgroundColor: "#FFF",
+  borderRadius: 10,
+  padding: 15,
+  marginBottom: 10,
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.1,
+  shadowRadius: 6,
+  elevation: 3,
+},
 
 });

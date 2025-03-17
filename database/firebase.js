@@ -5,12 +5,12 @@ import { getAuth } from 'firebase/auth'; // Si usas autenticación
 
 // Configuración de Firebase
 const firebaseConfig = {
-    apiKey: "AIzaSyDgxYehUA61XDiQsP7wWKKLIaemU1zbD50",
-    authDomain: "ibbac-attendance-ii.firebaseapp.com",
-    projectId: "ibbac-attendance-ii",
-    storageBucket: "ibbac-attendance-ii.firebasestorage.app",
-    messagingSenderId: "740043364983",
-    appId: "1:740043364983:web:3e8e6779354e68cec24472"
+    apiKey: "AIzaSyBK_AUmbP45yQl5CzgL0qfvj4T1ylkRK2c",
+  authDomain: "attendance-app-fa40b.firebaseapp.com",
+  projectId: "attendance-app-fa40b",
+  storageBucket: "attendance-app-fa40b.firebasestorage.app",
+  messagingSenderId: "933329569605",
+  appId: "1:933329569605:web:e71c3bc748ee33b6ab202c"
 };
 
 // Inicializa la aplicación de Firebase
