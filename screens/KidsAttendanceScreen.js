@@ -9,13 +9,39 @@ import {
   Alert,
 } from "react-native";
 import { db } from "../database/firebase";
-import { collection, getDocs, addDoc, query, where, updateDoc } from "firebase/firestore";
+import { collection, getDocs, addDoc, query, where, updateDoc, doc, setDoc, getDoc} from "firebase/firestore";
+
 
 export default function KidsAttendanceScreen({ route }) {
   const { classRoom, date, session } = route.params; // Parámetros recibidos
   const [kids, setKids] = useState([]); // Lista de niños de la clase seleccionada
   const [attendance, setAttendance] = useState({}); // Estado de asistencia
   const [loading, setLoading] = useState(false);
+
+  const updateMonthlySummary = async (dateStr, incremento = 1) => {
+  try {
+    const dateObj = new Date(dateStr);
+    const year = dateObj.getFullYear().toString();
+    const month = dateObj.toLocaleString("es-ES", { month: "short" }).toLowerCase();
+
+    const summaryRef = doc(db, "attendanceSummary", year);
+    const summarySnap = await getDoc(summaryRef);
+
+    if (summarySnap.exists()) {
+      const data = summarySnap.data();
+      const newCount = Math.max(0, (data[month] || 0) + incremento);
+      await updateDoc(summaryRef, {
+        [month]: newCount,
+      });
+    } else if (incremento > 0) {
+      await setDoc(summaryRef, {
+        [month]: 1,
+      });
+    }
+  } catch (error) {
+    console.error("Error actualizando resumen mensual:", error);
+  }
+};
 
   // Función para cargar los niños de la clase seleccionada
   const fetchKidsByClass = async () => {
@@ -67,56 +93,77 @@ export default function KidsAttendanceScreen({ route }) {
     }));
   };
 
+
+  
+
   // Función para guardar la asistencia en Firestore
-  const saveAttendance = async () => {
-    if (Object.keys(attendance).length === 0) {
-      Alert.alert("Error", "No hay cambios en la asistencia para guardar.");
-      return;
-    }
+ const saveAttendance = async () => {
+  if (Object.keys(attendance).length === 0) {
+    Alert.alert("Error", "No hay cambios en la asistencia para guardar.");
+    return;
+  }
 
-    try {
-      setLoading(true);
+  try {
+    setLoading(true);
 
-      // Guardar la asistencia de cada niño
-      for (const kidId in attendance) {
-        // Verificar si ya existe un registro de asistencia para este niño, fecha y sesión
-        const existingAttendanceQuery = query(
-          collection(db, "attendance"),
-          where("kidId", "==", kidId),
-          where("date", "==", date),
-          where("session", "==", session),
-          where("class", "==", classRoom)
-        );
+    for (const kidId in attendance) {
+      const isAttended = attendance[kidId];
 
-        const existingAttendanceSnapshot = await getDocs(existingAttendanceQuery);
+      const existingAttendanceQuery = query(
+        collection(db, "attendance"),
+        where("kidId", "==", kidId),
+        where("date", "==", date),
+        where("session", "==", session),
+        where("class", "==", classRoom)
+      );
 
-        if (existingAttendanceSnapshot.empty) {
-          // Si no existe, añadimos un nuevo documento
-          await addDoc(collection(db, "attendance"), {
-            kidId,
-            date,
-            session,
-            class: classRoom,
-            attended: attendance[kidId],
-          });
-        } else {
-          // Si ya existe, actualizamos el primer documento encontrado
-          const doc = existingAttendanceSnapshot.docs[0];
-          const docRef = doc.ref;
+      const existingAttendanceSnapshot = await getDocs(existingAttendanceQuery);
+
+      if (existingAttendanceSnapshot.empty) {
+        // Nuevo registro
+        await addDoc(collection(db, "attendance"), {
+          kidId,
+          date,
+          session,
+          class: classRoom,
+          attended: isAttended,
+        });
+
+        if (isAttended) {
+          await updateMonthlySummary(date, +1);
+        }
+
+      } else {
+        // Ya existe
+        const docSnapshot = existingAttendanceSnapshot.docs[0];
+        const docRef = docSnapshot.ref;
+        const prevAttended = docSnapshot.data().attended;
+
+        if (prevAttended !== isAttended) {
           await updateDoc(docRef, {
-            attended: attendance[kidId],
+            attended: isAttended,
           });
+
+          if (!prevAttended && isAttended) {
+            await updateMonthlySummary(date, +1);
+          }
+
+          if (prevAttended && !isAttended) {
+            await updateMonthlySummary(date, -1);
+          }
         }
       }
-
-      Alert.alert("Éxito", "Asistencia guardada correctamente.");
-    } catch (error) {
-      Alert.alert("Error", "Error al guardar la asistencia.");
-      console.error("Error al guardar la asistencia:", error);
-    } finally {
-      setLoading(false);
     }
-  };
+
+    Alert.alert("Éxito", "Asistencia guardada correctamente.");
+  } catch (error) {
+    Alert.alert("Error", "Error al guardar la asistencia.");
+    console.error("Error al guardar la asistencia:", error);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   // Cargar niños y asistencia cuando se inicia la pantalla
   useEffect(() => {

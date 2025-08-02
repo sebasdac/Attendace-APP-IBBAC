@@ -12,6 +12,8 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Alert,
+  Modal,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { db } from "../database/firebase";
 import {
@@ -24,6 +26,8 @@ import {
 } from "firebase/firestore";
 import { DateTimePicker } from "@react-native-community/datetimepicker";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { Switch } from "react-native"; // Importa el Switch
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function AttendanceScreen() {
   const navigation = useNavigation(); // navegacion
@@ -39,6 +43,20 @@ export default function AttendanceScreen() {
   const [selectedPerson, setSelectedPerson] = useState(null); // Persona seleccionada para editar
   const [search, setSearch] = useState(""); // Estado para el texto de búsqueda
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [isNew, setIsNew] = useState(false); // Estado para "¿Es nuevo?"
+  const [showNewOptionNotice, setShowNewOptionNotice] = useState(false);
+  
+
+  useEffect(() => {
+  const checkIfNoticeWasShown = async () => {
+    const noticeShown = await AsyncStorage.getItem("newOptionNoticeShown");
+    if (!noticeShown) {
+      setShowNewOptionNotice(true); // Mostrar el aviso si no se ha mostrado antes
+    }
+  };
+
+  checkIfNoticeWasShown();
+  }, []);
 
   const phoneRegex = /^[0-9]{8}$/;
 
@@ -75,12 +93,14 @@ export default function AttendanceScreen() {
         name,
         phone,
         birthDay,
+        isNew,
         createdAt: new Date(),
       });
 
       setMessage("Persona registrada con éxito");
       setName("");
       setPhone("");
+      setIsNew(false); // Reinicia el estado de isNew
       setBirthDay("");
       fetchPeople(); // Refrescar la lista después de registrar una persona
     } catch (error) {
@@ -150,7 +170,8 @@ export default function AttendanceScreen() {
     const phoneString = person.phone ? person.phone.toString() : "";
     setPhone(phoneString);
     setBirthDay(person.birthDay);
-    console.log(phoneString);
+    setIsNew(person.isNew || false)
+    console.log(person);
     setIsEditing(true);
   };
 
@@ -179,6 +200,7 @@ export default function AttendanceScreen() {
         name,
         phone,
         birthDay,
+        isNew,
       });
 
       setMessage("Persona actualizada con éxito");
@@ -186,6 +208,7 @@ export default function AttendanceScreen() {
       setName("");
       setPhone("");
       setBirthDay("");
+      setIsNew(false);
       fetchPeople(); // Refrescar la lista después de la edición
     } catch (error) {
       setMessage(`Error al actualizar: ${error.message}`);
@@ -283,6 +306,16 @@ export default function AttendanceScreen() {
               keyboardType="numeric"
               maxLength={10}
             />
+             {/* Switch para "¿Es nuevo?" */}
+          <View style={styles.switchContainer}>
+            <Text>¿Es nuevo?</Text>
+            <Switch
+              value={isNew} // El valor del Switch está vinculado al estado isNew
+              onValueChange={(value) => setIsNew(value)} // Actualiza el estado isNew cuando el usuario cambia el Switch
+              trackColor={{ false: "#767577", true: "#81b0ff" }}
+              thumbColor={isNew ? "#f5dd4b" : "#f4f3f4"}
+            />
+          </View>
             <View style={styles.buttonContainer}>
               {loading ? (
                 <ActivityIndicator size="small" color="#111" />
@@ -318,6 +351,15 @@ export default function AttendanceScreen() {
               keyboardType="numeric"
               maxLength={10}
             />
+            <View style={styles.switchContainer}>
+            <Text>¿Es nuevo?</Text>
+              <Switch
+              value={isNew}
+              onValueChange={(value) => setIsNew(value)}
+              trackColor={{ false: "#767577", true: "#81b0ff" }}
+              thumbColor={isNew ? "#f5dd4b" : "#f4f3f4"}
+            />
+            </View>
             <View style={styles.buttonContainer}>
               {loading ? (
                 <ActivityIndicator size="small" color="#111" />
@@ -380,7 +422,13 @@ export default function AttendanceScreen() {
                     </Text>
                     <Text style={styles.personPhone}>
                       Fecha de nacimiento: {item.birthDay}
+                     
                     </Text>
+                    <Text style={styles.personIsNew}>
+                     
+                      {item.isNew && "Es nuevo"}
+                    </Text>
+                    
 
                     {/* Contenedor para los botones */}
                     <View style={styles.optionsContainer}>
@@ -403,6 +451,30 @@ export default function AttendanceScreen() {
             )}
           </>
         )}
+        <Modal
+        visible={showNewOptionNotice}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowNewOptionNotice(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowNewOptionNotice(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>¡Nueva Opción!</Text>
+              <Text style={styles.modalText}>
+                Ahora puedes marcar a las personas como "nuevos" usando la opción "¿Es nuevo?".
+              </Text>
+              <Button
+                title="Entendido"
+                onPress={() => {
+                  AsyncStorage.setItem("newOptionNoticeShown", "true"); // Marcar que el aviso fue mostrado
+                  setShowNewOptionNotice(false);
+                }}
+              />
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>;
       </View>
     </KeyboardAvoidingView>
   );
@@ -415,7 +487,7 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 25,
     backgroundColor: "#FFFFFF", // Fondo blanco
   },
   header: {
@@ -445,7 +517,6 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     flex: 15,
-    marginTop: 5,
     padding: 10,
     borderTopWidth: 1,
     borderTopColor: "#EEE", // Línea superior gris muy claro
@@ -490,6 +561,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#555", // Texto gris medio
   },
+  personIsNew: {
+    fontSize: 16,
+    fontWeight :'bold',
+    color : "#008f39", // Texto gris medio
+  },
   optionsContainer: {
     flexDirection: "row", // Coloca los elementos en fila
     justifyContent: "space-around", // Espacio igual entre los botones
@@ -511,7 +587,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   buttonContainer: {
-    marginTop: 20,
+    marginTop: 10,
     alignItems: "center",
   },
   loader: {
@@ -568,4 +644,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
+ 
+  switchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  modalContent: {
+    backgroundColor: "#FFF",
+    borderRadius: 10,
+    padding: 20,
+    width: "80%",
+    alignItems: "center",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 10,
+    color: "#333",
+  },
+  modalText: {
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 20,
+    color: "#666",
+  },
+
 });

@@ -16,10 +16,13 @@ import {
   query,
   orderBy,
   where,
+  getDoc,
+  doc,
   limit,
 } from "firebase/firestore";
 import DashboardCard from "../components/DashboardCard";
 import { db } from "../database/firebase"; // Importa tu configuración de Firebase
+
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -32,8 +35,7 @@ const Dashboard = () => {
   const [top3Attendees, setTop3Attendees] = useState([]);
   const [monthlyAttendance, setMonthlyAttendance] = useState([]);
   const [loading, setLoading] = useState(false); // Estado de carga
-  const [shouldLoadData, setShouldLoadData] = useState(false); // Estado para controlar la carga de datos
-  const [dataLoaded, setDataLoaded] = useState(false); // Estado para controlar si los datos han sido cargados
+  
   const monthNames = [
     "ene",
     "feb",
@@ -50,25 +52,26 @@ const Dashboard = () => {
   ];
   const rotation = useSharedValue(0);
 
-  useEffect(() => {
-    if (shouldLoadData) {
-      const fetchData = async () => {
-        try {
-          setLoading(true); // Inicia la carga
-          await fetchTop3Attendees();
-          await fetchLastSession();
-          await fetchMonthlyAttendance();
-        } catch (error) {
-          console.error("Error al cargar los datos:", error);
-        } finally {
-          setLoading(false); // Finaliza la carga
-          setShouldLoadData(false); // Resetea el estado de carga
-        }
-      };
-  
-      fetchData();
+ 
+
+
+ useEffect(() => {
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      await fetchTop3Attendees();
+      await fetchLastSession();
+      await fetchMonthlyAttendance();
+    } catch (error) {
+      console.error("Error al cargar los datos:", error);
+    } finally {
+      setLoading(false);
     }
-  }, [shouldLoadData]); // Dependencia de shouldLoadData
+  };
+
+  fetchData();
+}, []);
+
 
   const handleLoadStatistics = () => {
     setShouldLoadData(true); // Activa la carga de datos
@@ -76,46 +79,37 @@ const Dashboard = () => {
     setLoading(true)
   };
   const fetchTop3Attendees = async () => {
-    try {
-      const attendanceRef = collection(db, "attendance");
-      const attendanceSnapshot = await getDocs(attendanceRef);
-      const attendanceData = attendanceSnapshot.docs.map((doc) => doc.data());
+  try {
+    const countsRef = collection(db, "attendanceCounts");
+    const snapshot = await getDocs(countsRef);
 
-      const attendanceCounts = {};
-      attendanceData.forEach((item) => {
-        const { personId } = item;
-        if (!personId) return;
-        attendanceCounts[personId] = (attendanceCounts[personId] || 0) + 1;
-      });
+    const allData = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        name: data.name || "Desconocido",
+        count: data.count || 0,
+      };
+    });
 
-      const peopleRef = collection(db, "people");
-      const peopleSnapshot = await getDocs(peopleRef);
-      const peopleData = {};
-      peopleSnapshot.docs.forEach((doc) => {
-        const { name } = doc.data();
-        peopleData[doc.id] = name?.trim() || "Desconocido";
-      });
+    // Obtener lista de excluidos
+    const excludedRef = collection(db, "excludedPeople");
+    const excludedSnapshot = await getDocs(excludedRef);
+    const excludedNames = excludedSnapshot.docs.map((doc) =>
+      doc.data().name.trim()
+    );
 
-      const excludedRef = collection(db, "excludedPeople");
-      const excludedSnapshot = await getDocs(excludedRef);
-      const excludedNames = excludedSnapshot.docs.map((doc) =>
-        doc.data().name.trim()
-      );
+    // Filtrar y ordenar el top 3
+    const top3Data = allData
+      .filter((person) => !excludedNames.includes(person.name))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 3);
 
-      const top3Data = Object.entries(attendanceCounts)
-        .map(([personId, count]) => ({
-          name: peopleData[personId] || "Desconocido",
-          count,
-        }))
-        .filter((person) => !excludedNames.includes(person.name))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 3);
+    setTop3Attendees(top3Data);
+  } catch (error) {
+    console.error("Error al obtener top 3 desde attendanceCounts:", error);
+  }
+};
 
-      setTop3Attendees(top3Data);
-    } catch (error) {
-      console.error("Error fetching top 3 attendees:", error);
-    }
-  };
 
   const fetchLastSession = async () => {
     try {
@@ -156,31 +150,26 @@ const Dashboard = () => {
   };
 
   const fetchMonthlyAttendance = async () => {
-    try {
-      const attendanceRef = collection(db, "attendance");
-      const snapshot = await getDocs(attendanceRef);
-      const attendanceData = snapshot.docs
-        .map((doc) => doc.data())
-        .filter((item) => item.attended); // Filtrar solo registros donde attended es true
+  try {
+    const year = new Date().getFullYear().toString();
+    const summaryRef = doc(db, "attendanceSummary", year);
+    const snapshot = await getDoc(summaryRef);
 
-      const attendanceByMonth = Array(12).fill(0); // Inicializar contadores para los 12 meses
-      attendanceData.forEach((item) => {
-        const date = new Date(item.date);
-        const monthIndex = date.getMonth(); // Obtener el índice del mes (0-11)
-        attendanceByMonth[monthIndex] += 1; // Incrementar el contador del mes correspondiente
-      });
-
-      const formattedData = attendanceByMonth.map((count, index) => ({
-        month: monthNames[index], // Usar los nombres de los meses
-        count,
+    if (snapshot.exists()) {
+      const data = snapshot.data();
+      const formattedData = monthNames.map((month) => ({
+        month,
+        count: data[month] || 0,
       }));
 
-      setMonthlyAttendance(formattedData); // Guardar los datos formateados en el estado
-      
-    } catch (error) {
-      console.error("Error fetching monthly attendance:", error);
+      setMonthlyAttendance(formattedData);
+    } else {
+      setMonthlyAttendance([]);
     }
-  };
+  } catch (error) {
+    console.error("Error al obtener resumen mensual:", error);
+  }
+};
 
   if (loading) {
     // Muestra el preloader mientras carga
@@ -210,15 +199,9 @@ const Dashboard = () => {
         Principal
       </Text>
   
-      {/* Botón para cargar estadísticas */}
-      {!dataLoaded && (
-        <TouchableOpacity style={styles.loadButton} onPress={handleLoadStatistics}>
-          <Text style={styles.loadButtonText}>Cargar estadísticas</Text>
-        </TouchableOpacity>
-      )}
+     
     
-      {/* Renderizado condicional de los gráficos y componentes */}
-      {dataLoaded && ( // Solo renderiza si dataLoaded es true
+   
         <>
           {/* Fila con dos tarjetas */}
           <View style={styles.row}>
@@ -286,7 +269,7 @@ const Dashboard = () => {
             )}
           </View>
         </>
-      )}
+  
     </View>
   );
 };

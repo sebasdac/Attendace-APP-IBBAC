@@ -6,8 +6,12 @@ import DateTimePicker from "@react-native-community/datetimepicker"; // Instala 
 import { db } from '../database/firebase';
 import { collection, query, where, getDocs } from "firebase/firestore";
 
+
 const AnalyticsScreen = () => {
-  const [attendanceCounts, setAttendanceCounts] = useState({ AM: 0, PM: 0 }); // Asistencias por sesión
+ const [attendanceCounts, setAttendanceCounts] = useState({
+  AM: { kids: 0, adults: 0 },
+  PM: { kids: 0, adults: 0 },
+});
   const [selectedDate, setSelectedDate] = useState(new Date()); // Fecha seleccionada
   const [showDatePicker, setShowDatePicker] = useState(false); // Mostrar selector de fecha
   const [people, setPeople] = useState([]);
@@ -23,44 +27,51 @@ const AnalyticsScreen = () => {
   }, [selectedDate]);
 
   const fetchAttendanceData = async () => {
-    try {
-      let q = collection(db, "attendance");
-  
-      // Formatear la fecha seleccionada en la zona horaria local
-      const localDate = new Date(selectedDate.getTime() + Math.abs(selectedDate.getTimezoneOffset() * 60000));
-      const dateString = localDate.toISOString().split("T")[0];
-  
-      // Filtrar por la fecha seleccionada
-      q = query(q, where("date", "==", dateString));
-  
-      const snapshot = await getDocs(q);
+  try {
+    let q = collection(db, "attendance");
 
-      console.log(dateString);
-  
-      if (snapshot.empty) {
-        console.log("No se encontraron datos para la fecha seleccionada.");
-        setAttendanceCounts({ AM: 0, PM: 0 });
-        return;
-      }
-  
-      // Contar asistencias por sesión
-      let amCount = 0;
-      let pmCount = 0;
-  
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        // Verificar si el campo "attended" es true
-        if (data.attended) {
-          if (data.session === "AM") amCount++;
-          if (data.session === "PM") pmCount++;
-        }
+    const localDate = new Date(selectedDate.getTime() + Math.abs(selectedDate.getTimezoneOffset() * 60000));
+    const dateString = localDate.toISOString().split("T")[0];
+
+    q = query(q, where("date", "==", dateString));
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+      setAttendanceCounts({
+        AM: { kids: 0, adults: 0 },
+        PM: { kids: 0, adults: 0 },
       });
-  
-      setAttendanceCounts({ AM: amCount, PM: pmCount });
-    } catch (error) {
-      console.error("Error al obtener los datos de Firestore: ", error);
+      return;
     }
-  };
+
+    // Contadores separados por sesión
+    let counts = {
+      AM: { kids: 0, adults: 0 },
+      PM: { kids: 0, adults: 0 },
+    };
+
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+
+      if (data.attended) {
+        const session = data.session || "AM"; // por defecto AM si no viene definido
+
+        const isKid = data.kidId && data.class;
+        const isAdult = !data.kidId && !data.class;
+
+        if (session === "AM" || session === "PM") {
+          if (isKid) counts[session].kids += 1;
+          else if (isAdult) counts[session].adults += 1;
+        }
+      }
+    });
+
+    setAttendanceCounts(counts);
+  } catch (error) {
+    console.error("Error al obtener los datos de Firestore: ", error);
+  }
+};
+
   
   const handleViewAttendance = (personId) => {
     navigation.navigate('AttendanceReport', { personId }); // Navega a la pantalla del reporte
@@ -86,6 +97,7 @@ const AnalyticsScreen = () => {
       setPeople(peopleList);
       setFilteredPeople(peopleList); // Inicialmente, mostrar toda la lista
       setDataLoaded(true); // Marca que los datos se han cargado
+    
     } catch (error) {
       console.error('Error al cargar personas:', error);
     } finally {
@@ -116,6 +128,7 @@ if (loading) {
     </View>
   );
 }
+
   
 
 return (
@@ -143,47 +156,53 @@ return (
     )}
 
     {/* Tarjetas de estadísticas */}
-    <View style={styles.statsContainer}>
-      <View style={styles.statCard}>
-        <Text style={styles.statTitle}>Asistencia AM</Text>
-        <Text style={styles.statValue}>{attendanceCounts.AM}</Text>
-      </View>
-      <View style={styles.statCard}>
-        <Text style={styles.statTitle}>Asistencia PM</Text>
-        <Text style={styles.statValue}>{attendanceCounts.PM}</Text>
-      </View>
-    </View>
+    <View style={styles.statCard}>
+  <Text style={styles.statTitle}>Asistencia AM</Text>
+  <Text style={styles.statValue}>Niños: {attendanceCounts.AM.kids}</Text>
+  <Text style={styles.statValue}>Adultos: {attendanceCounts.AM.adults}</Text>
+</View>
+<View style={styles.statCard}>
+  <Text style={styles.statTitle}>Asistencia PM</Text>
+  <Text style={styles.statValue}>Niños: {attendanceCounts.PM.kids}</Text>
+  <Text style={styles.statValue}>Adultos: {attendanceCounts.PM.adults}</Text>
+</View>
+
      {/* Gráfico de Barras */}
      <BarChart
       data={{
-        labels: ['AM', 'PM'], // Etiquetas del gráfico
+        labels: ['Niños AM', 'Adultos AM', 'Niños PM', 'Adultos PM'],
         datasets: [
           {
-            data: [attendanceCounts.AM, attendanceCounts.PM], // Cantidades de asistencia
+            data: [
+              attendanceCounts.AM.kids,
+              attendanceCounts.AM.adults,
+              attendanceCounts.PM.kids,
+              attendanceCounts.PM.adults,
+            ],
           },
         ],
       }}
       width={Dimensions.get('window').width - 32}
-      height={220}
+      height={260}
       chartConfig={{
         backgroundColor: '#fff',
         backgroundGradientFrom: '#fff',
         backgroundGradientTo: '#fff',
         decimalPlaces: 0,
-        color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`, // Color negro para las barras
-        labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`, // Color negro para las etiquetas
-
+        color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+        labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
         propsForBackgroundLines: {
-          stroke: '#ddd', // Líneas de fondo en gris claro
+          stroke: '#ddd',
         },
       }}
       style={{
         marginVertical: 8,
         borderRadius: 8,
       }}
-      fromZero // Las barras comienzan desde 0
-      showValuesOnTopOfBars // Mostrar los valores en la parte superior de las barras
+      fromZero
+      showValuesOnTopOfBars
     />
+
     
 
 
