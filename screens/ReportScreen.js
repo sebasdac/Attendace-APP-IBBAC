@@ -2,23 +2,22 @@ import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, Dimensions, TouchableOpacity, ActivityIndicator, FlatList, StyleSheet, TextInput} from "react-native";
 import { BarChart } from "react-native-chart-kit";
 import { useNavigation } from "@react-navigation/native";
-import DateTimePicker from "@react-native-community/datetimepicker"; // Instala con `expo install @react-native-community/datetimepicker`
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { db } from '../database/firebase';
 import { collection, query, where, getDocs } from "firebase/firestore";
-
 
 const AnalyticsScreen = () => {
  const [attendanceCounts, setAttendanceCounts] = useState({
   AM: { kids: 0, adults: 0 },
   PM: { kids: 0, adults: 0 },
 });
-  const [selectedDate, setSelectedDate] = useState(new Date()); // Fecha seleccionada
-  const [showDatePicker, setShowDatePicker] = useState(false); // Mostrar selector de fecha
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [people, setPeople] = useState([]);
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation();
-  const [filteredPeople, setFilteredPeople] = useState([]); // Lista filtrada
-  const [search, setSearch] = useState(''); // Texto de búsqueda
+  const [filteredPeople, setFilteredPeople] = useState([]);
+  const [search, setSearch] = useState('');
   const [loadingPeople, setLoadingPeople] = useState(false); 
   const [dataLoaded, setDataLoaded] = useState(false);
 
@@ -44,7 +43,6 @@ const AnalyticsScreen = () => {
       return;
     }
 
-    // Contadores separados por sesión
     let counts = {
       AM: { kids: 0, adults: 0 },
       PM: { kids: 0, adults: 0 },
@@ -54,7 +52,7 @@ const AnalyticsScreen = () => {
       const data = doc.data();
 
       if (data.attended) {
-        const session = data.session || "AM"; // por defecto AM si no viene definido
+        const session = data.session || "AM";
 
         const isKid = data.kidId && data.class;
         const isAdult = !data.kidId && !data.class;
@@ -72,22 +70,20 @@ const AnalyticsScreen = () => {
   }
 };
 
-  
   const handleViewAttendance = (personId) => {
-    navigation.navigate('AttendanceReport', { personId }); // Navega a la pantalla del reporte
+    navigation.navigate('AttendanceReport', { personId });
   };
   
   const handleDateChange = (event, date) => {
     setShowDatePicker(false);
     if (date) {
-      // Ajustar la fecha al inicio del día local para evitar desajustes
       const localDate = new Date(date.setHours(0, 0, 0, 0));
       setSelectedDate(localDate);
     }
   };
 
   const fetchPeople = async () => {
-    setLoadingPeople(true); // Inicia el indicador de carga
+    setLoadingPeople(true);
     try {
       const snapshot = await getDocs(collection(db, 'people'));
       const peopleList = snapshot.docs.map((doc) => ({
@@ -95,21 +91,21 @@ const AnalyticsScreen = () => {
         ...doc.data(),
       }));
       setPeople(peopleList);
-      setFilteredPeople(peopleList); // Inicialmente, mostrar toda la lista
-      setDataLoaded(true); // Marca que los datos se han cargado
+      setFilteredPeople(peopleList);
+      setDataLoaded(true);
     
     } catch (error) {
       console.error('Error al cargar personas:', error);
     } finally {
-      setLoadingPeople(false); // Detén el indicador de carga
+      setLoadingPeople(false);
     }
   };
 
 const normalizeText = (text) => {
   return text
-    .normalize('NFD') // Descompone los caracteres con tildes
-    .replace(/[\u0300-\u036f]/g, '') // Elimina los caracteres diacríticos
-    .toLowerCase(); // Convierte todo a minúsculas
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
 };
 
 const filterByName = (text) => {
@@ -120,32 +116,54 @@ const filterByName = (text) => {
   setFilteredPeople(filtered);
 };
 
+// Función para formatear la fecha de manera más amigable
+const formatDate = (date) => {
+  const options = { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  };
+  return date.toLocaleDateString('es-ES', options);
+};
+
+// Calcular totales
+const totalAM = attendanceCounts.AM.kids + attendanceCounts.AM.adults;
+const totalPM = attendanceCounts.PM.kids + attendanceCounts.PM.adults;
+const totalDay = totalAM + totalPM;
 
 if (loading) {
   return (
     <View style={styles.loaderContainer}>
-      <ActivityIndicator size="large" color="#000" />
+      <ActivityIndicator size="large" color="#6366f1" />
+      <Text style={styles.loadingText}>Cargando estadísticas...</Text>
     </View>
   );
 }
 
-  
-
 return (
-  <ScrollView style={{ flex: 1, padding: 16, backgroundColor: '#fff' }}>
-    {/* Encabezado */}
-    <Text style={styles.header}>Estadísticas</Text>
+  <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    {/* Header con gradiente */}
+    <View style={styles.headerContainer}>
+      <Text style={styles.header}>📊 Estadísticas</Text>
+      <Text style={styles.subtitle}>Panel de asistencia diaria</Text>
+    </View>
 
-    {/* Selección de Fecha */}
-    <View style={{ marginBottom: 16 }}>
+    {/* Selección de Fecha Mejorada */}
+    <View style={styles.dateSection}>
+      <Text style={styles.sectionTitle}>📅 Fecha seleccionada</Text>
       <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.datePicker}>
-        <Text style={styles.dateText}>
-          Fecha: {selectedDate.toISOString().split('T')[0]}
-        </Text>
+        <View style={styles.datePickerContent}>
+          <Text style={styles.dateMainText}>
+            {formatDate(selectedDate)}
+          </Text>
+          <Text style={styles.dateSubText}>
+            Toca para cambiar
+          </Text>
+        </View>
       </TouchableOpacity>
     </View>
 
-    {/* Mostrar el selector de fecha */}
     {showDatePicker && (
       <DateTimePicker
         value={selectedDate}
@@ -155,242 +173,428 @@ return (
       />
     )}
 
-    {/* Tarjetas de estadísticas */}
-    <View style={styles.statCard}>
-  <Text style={styles.statTitle}>Asistencia AM</Text>
-  <Text style={styles.statValue}>Niños: {attendanceCounts.AM.kids}</Text>
-  <Text style={styles.statValue}>Adultos: {attendanceCounts.AM.adults}</Text>
-</View>
-<View style={styles.statCard}>
-  <Text style={styles.statTitle}>Asistencia PM</Text>
-  <Text style={styles.statValue}>Niños: {attendanceCounts.PM.kids}</Text>
-  <Text style={styles.statValue}>Adultos: {attendanceCounts.PM.adults}</Text>
-</View>
+    {/* Resumen Total */}
+    <View style={styles.summaryCard}>
+      <Text style={styles.summaryTitle}>Total del día</Text>
+      <Text style={styles.summaryValue}>{totalDay}</Text>
+      <Text style={styles.summarySubtitle}>personas asistieron</Text>
+    </View>
 
-     {/* Gráfico de Barras */}
-     <BarChart
-      data={{
-        labels: ['Niños AM', 'Adultos AM', 'Niños PM', 'Adultos PM'],
-        datasets: [
-          {
-            data: [
-              attendanceCounts.AM.kids,
-              attendanceCounts.AM.adults,
-              attendanceCounts.PM.kids,
-              attendanceCounts.PM.adults,
-            ],
-          },
-        ],
-      }}
-      width={Dimensions.get('window').width - 32}
-      height={260}
-      chartConfig={{
-        backgroundColor: '#fff',
-        backgroundGradientFrom: '#fff',
-        backgroundGradientTo: '#fff',
-        decimalPlaces: 0,
-        color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-        labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-        propsForBackgroundLines: {
-          stroke: '#ddd',
-        },
-      }}
-      style={{
-        marginVertical: 8,
-        borderRadius: 8,
-      }}
-      fromZero
-      showValuesOnTopOfBars
-    />
-
-    
-
-
-
-    {/* Botón para cargar personas */}
-    {!dataLoaded && (
-      <TouchableOpacity
-        style={styles.loadButton}
-        onPress={fetchPeople}
-        disabled={loadingPeople}
-      >
-        {loadingPeople ? (
-          <ActivityIndicator size="small" color="#111" />
-        ) : (
-          <Text style={styles.loadButtonText}>Cargar Personas</Text>
-        )}
-      </TouchableOpacity>
-    )}
-
-    {/* Lista de Personas */}
-    {dataLoaded && (
-      <View style={styles.container}>
-        <Text style={styles.subHeader}>Reporte por persona</Text>
-        {/* Filtro de búsqueda */}
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Buscar por nombre"
-          placeholderTextColor="#888"
-          value={search}
-          onChangeText={filterByName}
-        />
-        {filteredPeople.length > 0 ? (
-          <FlatList
-            data={filteredPeople}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View style={styles.personItem}>
-                <Text style={styles.personName}>{item.name}</Text>
-                <TouchableOpacity
-                  style={styles.viewButton}
-                  onPress={() => handleViewAttendance(item.id)}
-                >
-                  <Text style={styles.buttonText}>Ver Asistencia</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          />
-        ) : (
-          <Text style={styles.noDataText}>No hay personas registradas</Text>
-        )}
+    {/* Tarjetas de estadísticas mejoradas */}
+    <View style={styles.statsGrid}>
+      <View style={styles.sessionCard}>
+        <View style={styles.sessionHeader}>
+          <Text style={styles.sessionIcon}>🌅</Text>
+          <Text style={styles.sessionTitle}>Mañana</Text>
+          <Text style={styles.sessionTotal}>{totalAM}</Text>
+        </View>
+        <View style={styles.sessionStats}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{attendanceCounts.AM.kids}</Text>
+            <Text style={styles.statLabel}>Niños</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{attendanceCounts.AM.adults}</Text>
+            <Text style={styles.statLabel}>Adultos</Text>
+          </View>
+        </View>
       </View>
-    )}
+
+      <View style={styles.sessionCard}>
+        <View style={styles.sessionHeader}>
+          <Text style={styles.sessionIcon}>🌆</Text>
+          <Text style={styles.sessionTitle}>Tarde</Text>
+          <Text style={styles.sessionTotal}>{totalPM}</Text>
+        </View>
+        <View style={styles.sessionStats}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{attendanceCounts.PM.kids}</Text>
+            <Text style={styles.statLabel}>Niños</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{attendanceCounts.PM.adults}</Text>
+            <Text style={styles.statLabel}>Adultos</Text>
+          </View>
+        </View>
+      </View>
+    </View>
+
+    {/* Gráfico mejorado */}
+    <View style={styles.chartSection}>
+      <Text style={styles.sectionTitle}>📈 Gráfico de asistencia</Text>
+      <View style={styles.chartContainer}>
+        <BarChart
+          data={{
+            labels: ['Niños AM', 'Adultos AM', 'Niños PM', 'Adultos PM'],
+            datasets: [
+              {
+                data: [
+                  attendanceCounts.AM.kids,
+                  attendanceCounts.AM.adults,
+                  attendanceCounts.PM.kids,
+                  attendanceCounts.PM.adults,
+                ],
+              },
+            ],
+          }}
+          width={Dimensions.get('window').width - 48}
+          height={220}
+          chartConfig={{
+            backgroundColor: '#ffffff',
+            backgroundGradientFrom: '#ffffff',
+            backgroundGradientTo: '#f8fafc',
+            decimalPlaces: 0,
+            color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
+            labelColor: (opacity = 1) => `rgba(51, 65, 85, ${opacity})`,
+            propsForBackgroundLines: {
+              stroke: '#e2e8f0',
+            },
+            propsForLabels: {
+              fontSize: 12,
+            },
+          }}
+          style={styles.chart}
+          fromZero
+          showValuesOnTopOfBars
+        />
+      </View>
+    </View>
+
+    {/* Sección de personas */}
+    <View style={styles.peopleSection}>
+      <Text style={styles.sectionTitle}>👥 Reportes individuales</Text>
+      
+      {!dataLoaded ? (
+        <TouchableOpacity
+          style={styles.loadButton}
+          onPress={fetchPeople}
+          disabled={loadingPeople}
+        >
+          {loadingPeople ? (
+            <ActivityIndicator size="small" color="#6366f1" />
+          ) : (
+            <>
+              <Text style={styles.loadButtonText}>Cargar lista de personas</Text>
+              <Text style={styles.loadButtonSubtext}>Ver reportes individuales</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      ) : (
+        <>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="🔍 Buscar por nombre..."
+            placeholderTextColor="#94a3b8"
+            value={search}
+            onChangeText={filterByName}
+          />
+          
+          {filteredPeople.length > 0 ? (
+            <FlatList
+              data={filteredPeople}
+              keyExtractor={(item) => item.id}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => (
+                <View style={styles.personCard}>
+                  <View style={styles.personInfo}>
+                    <Text style={styles.personName}>{item.name}</Text>
+                    <Text style={styles.personSubtext}>Ver historial completo</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.viewButton}
+                    onPress={() => handleViewAttendance(item.id)}
+                  >
+                    <Text style={styles.viewButtonText}>Ver</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            />
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateIcon}>👤</Text>
+              <Text style={styles.emptyStateText}>No se encontraron personas</Text>
+              <Text style={styles.emptyStateSubtext}>Verifica tu búsqueda</Text>
+            </View>
+          )}
+        </>
+      )}
+    </View>
   </ScrollView>
 );
 
 }
 
 const styles = StyleSheet.create({
-  header: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#000',
-    marginBottom: 16,
-    marginTop: 30,
-  },
-  subHeader: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  datePicker: {
-    padding: 10,
-    borderRadius: 8,
-    backgroundColor: '#f5f5f5', // Gris claro
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  dateText: {
-    fontSize: 16,
-    color: '#000', // Negro
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  statCard: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: '#f5f5f5', // Gris claro
-    borderRadius: 8,
-    marginHorizontal: 4,
-    shadowColor: '#000', // Sombra negra
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2, // Elevación para Android
-  },
-  statTitle: {
-    fontSize: 14,
-    color: '#888', // Gris oscuro
-    marginBottom: 8,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#000', // Negro
-  },
-  searchInput: {
-    height: 40,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    marginBottom: 16,
-    backgroundColor: '#fff',
-    color: '#000',
-  },
   container: {
     flex: 1,
-    backgroundColor: '#f9f9f9',
-    padding: 16,
-    justifyContent: 'flex-start',
-    
+    backgroundColor: '#f8fafc',
   },
-  personItem: {
-    padding: 12,
-    marginBottom: 10,
-    backgroundColor: '#f9f9f9', // Gris muy claro
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
+  headerContainer: {
+    backgroundColor: '#6366f1',
+    paddingTop: 60,
+    paddingBottom: 30,
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
-  personName: {
-    fontSize: 18,
+  header: {
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#333', // Gris oscuro
+    color: '#ffffff',
+    marginBottom: 4,
   },
-  personDetail: {
+  subtitle: {
     fontSize: 16,
-    color: '#555', // Gris medio
-    marginVertical: 2,
+    color: '#c7d2fe',
+    opacity: 0.9,
   },
-  viewButton: {
-    marginTop: 8,
-    padding: 8,
-    backgroundColor: '#fff', // Blanco
-    borderWidth: 1,
-    borderColor: '#000', // Borde negro
-    borderRadius: 6,
+  dateSection: {
+    padding: 24,
+    paddingBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 12,
+  },
+  datePicker: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  datePickerContent: {
     alignItems: 'center',
   },
-  buttonText: {
-    color: '#000', // Texto negro
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  noDataText: {
+  dateMainText: {
     fontSize: 18,
-    textAlign: 'center',
-    marginTop: 20,
-    color: '#888', // Gris oscuro
+    fontWeight: '600',
+    color: '#334155',
+    textTransform: 'capitalize',
+  },
+  dateSubText: {
+    fontSize: 14,
+    color: '#64748b',
+    marginTop: 4,
+  },
+  summaryCard: {
+    backgroundColor: '#ffffff',
+    marginHorizontal: 24,
+    marginBottom: 24,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  summaryTitle: {
+    fontSize: 16,
+    color: '#64748b',
+    marginBottom: 8,
+  },
+  summaryValue: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#6366f1',
+    marginBottom: 4,
+  },
+  summarySubtitle: {
+    fontSize: 14,
+    color: '#94a3b8',
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    paddingHorizontal: 24,
+    marginBottom: 24,
+    gap: 16,
+  },
+  sessionCard: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  sessionHeader: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sessionIcon: {
+    fontSize: 24,
+    marginBottom: 8,
+  },
+  sessionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 4,
+  },
+  sessionTotal: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#6366f1',
+  },
+  sessionStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#334155',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 4,
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: '#e2e8f0',
+    marginHorizontal: 16,
+  },
+  chartSection: {
+    paddingHorizontal: 24,
+    marginBottom: 24,
+  },
+  chartContainer: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  chart: {
+    borderRadius: 8,
+  },
+  peopleSection: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+  },
+  searchInput: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#334155',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  loadButton: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  loadButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6366f1',
+    marginBottom: 4,
+  },
+  loadButtonSubtext: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  personCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  personInfo: {
+    flex: 1,
+  },
+  personName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 2,
+  },
+  personSubtext: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  viewButton: {
+    backgroundColor: '#6366f1',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  viewButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  emptyStateIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  emptyStateText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 4,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: '#64748b',
   },
   loaderContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#f8fafc',
   },
-  loadButton: {
-    backgroundColor: '#FFFFFF',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth:1,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginVertical: 10,
-  },
-  loadButtonText: {
-    color: '#111',
+  loadingText: {
+    marginTop: 16,
     fontSize: 16,
-    fontWeight: 'bold',
+    color: '#64748b',
   },
 });
-
-
 
 export default AnalyticsScreen;

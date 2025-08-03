@@ -26,47 +26,44 @@ import {
 } from "firebase/firestore";
 import { DateTimePicker } from "@react-native-community/datetimepicker";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
-import { Switch } from "react-native"; // Importa el Switch
+import { Switch } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function AttendanceScreen() {
-  const navigation = useNavigation(); // navegacion
+  const navigation = useNavigation();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [birthDay, setBirthDay] = useState("");
   const [message, setMessage] = useState("");
   const [people, setPeople] = useState([]);
-  const [filteredPeople, setFilteredPeople] = useState([]); // Lista filtrada de personas
+  const [filteredPeople, setFilteredPeople] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingPeople, setLoadingPeople] = useState(false);
-  const [isEditing, setIsEditing] = useState(false); // Controla si estamos en modo de edición
-  const [selectedPerson, setSelectedPerson] = useState(null); // Persona seleccionada para editar
-  const [search, setSearch] = useState(""); // Estado para el texto de búsqueda
+  const [isEditing, setIsEditing] = useState(false);
+  const [selectedPerson, setSelectedPerson] = useState(null);
+  const [search, setSearch] = useState("");
   const [dataLoaded, setDataLoaded] = useState(false);
-  const [isNew, setIsNew] = useState(false); // Estado para "¿Es nuevo?"
+  const [isNew, setIsNew] = useState(false);
   const [showNewOptionNotice, setShowNewOptionNotice] = useState(false);
-  
 
   useEffect(() => {
-  const checkIfNoticeWasShown = async () => {
-    const noticeShown = await AsyncStorage.getItem("newOptionNoticeShown");
-    if (!noticeShown) {
-      setShowNewOptionNotice(true); // Mostrar el aviso si no se ha mostrado antes
-    }
-  };
+    const checkIfNoticeWasShown = async () => {
+      const noticeShown = await AsyncStorage.getItem("newOptionNoticeShown");
+      if (!noticeShown) {
+        setShowNewOptionNotice(true);
+      }
+    };
 
-  checkIfNoticeWasShown();
+    checkIfNoticeWasShown();
   }, []);
 
   const phoneRegex = /^[0-9]{8}$/;
 
   const validateDate = (date) => {
-    // Verifica que el formato sea dd/mm/yyyy
     const regex = /^\d{2}\/\d{2}\/\d{4}$/;
     if (!regex.test(date)) {
       return false;
     }
-
     return true;
   };
 
@@ -80,7 +77,7 @@ export default function AttendanceScreen() {
       setMessage("Por favor, ingresa un número de teléfono válido (8 dígitos)");
       return;
     }
-    // Validar la fecha de nacimiento
+
     if (!validateDate(birthDay)) {
       setMessage("Por favor, ingresa una fecha válida en formato dd/mm/aaaa");
       return;
@@ -100,9 +97,9 @@ export default function AttendanceScreen() {
       setMessage("Persona registrada con éxito");
       setName("");
       setPhone("");
-      setIsNew(false); // Reinicia el estado de isNew
+      setIsNew(false);
       setBirthDay("");
-      fetchPeople(); // Refrescar la lista después de registrar una persona
+      fetchPeople();
     } catch (error) {
       setMessage(`Error al registrar: ${error.message}`);
     } finally {
@@ -110,7 +107,6 @@ export default function AttendanceScreen() {
     }
   };
 
-  // confirmar si se quiere eliminar la persona
   const confirmDeletePerson = (personId) => {
     Alert.alert(
       "Confirmar Eliminación",
@@ -128,9 +124,7 @@ export default function AttendanceScreen() {
       ]
     );
   };
-  //
 
-  // Función para cargar la lista de personas
   const fetchPeople = async () => {
     setLoadingPeople(true);
     try {
@@ -145,7 +139,7 @@ export default function AttendanceScreen() {
       );
       setPeople(sortedPeople);
       setFilteredPeople(sortedPeople);
-      setDataLoaded(true); // Marca que los datos se han cargado
+      setDataLoaded(true);
     } catch (error) {
       console.error("Error al cargar personas:", error);
     } finally {
@@ -153,11 +147,10 @@ export default function AttendanceScreen() {
     }
   };
 
-  // Función para eliminar una persona
   const deletePerson = async (id) => {
     try {
       await deleteDoc(doc(db, "people", id));
-      fetchPeople(); // Refrescar la lista después de eliminar
+      fetchPeople();
     } catch (error) {
       console.error("Error al eliminar persona:", error);
     }
@@ -166,22 +159,19 @@ export default function AttendanceScreen() {
   const editPerson = (person) => {
     setSelectedPerson(person);
     setName(person.name);
-    // Convertir phone a string si no lo es
     const phoneString = person.phone ? person.phone.toString() : "";
     setPhone(phoneString);
     setBirthDay(person.birthDay);
-    setIsNew(person.isNew || false)
-    console.log(person);
+    setIsNew(person.isNew || false);
     setIsEditing(true);
   };
 
-  // Función para guardar los cambios de una persona editada
   const saveChanges = async () => {
     if (name.trim() === "" || phone.trim() === "") {
       setMessage("Por favor, ingresa todos los campos");
       return;
     }
-    // Validar la fecha de nacimiento
+
     if (!validateDate(birthDay)) {
       setMessage("Por favor, ingresa una fecha válida en formato dd/mm/aaaa");
       return;
@@ -204,12 +194,12 @@ export default function AttendanceScreen() {
       });
 
       setMessage("Persona actualizada con éxito");
-      setIsEditing(false); // Regresa al modo de lista
+      setIsEditing(false);
       setName("");
       setPhone("");
       setBirthDay("");
       setIsNew(false);
-      fetchPeople(); // Refrescar la lista después de la edición
+      fetchPeople();
     } catch (error) {
       setMessage(`Error al actualizar: ${error.message}`);
     } finally {
@@ -217,39 +207,27 @@ export default function AttendanceScreen() {
     }
   };
 
-  // Función para eliminar tildes de un texto
   const removeDiacritics = (text) => {
     return text
-      .normalize("NFD") // Descompone los caracteres con tildes en sus componentes
-      .replace(/[\u0300-\u036f]/g, ""); // Elimina los caracteres diacríticos
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
   };
 
-  // Función para filtrar personas por nombre
   const filterPeople = (searchText) => {
     setSearch(searchText);
-
-    // Elimina las tildes del texto de búsqueda
     const normalizedSearch = removeDiacritics(searchText.toLowerCase());
-
-    // Filtra la lista de personas por nombre, ignorando tildes y mayúsculas/minúsculas
     const filtered = people.filter((person) => {
       const normalizedPersonName = removeDiacritics(person.name.toLowerCase());
       return normalizedPersonName.includes(normalizedSearch);
     });
-
-    setFilteredPeople(filtered); // Actualiza la lista filtrada
+    setFilteredPeople(filtered);
   };
 
   const handleDateChange = (text) => {
-    // Permite solo números
     const formattedText = text.replace(/[^0-9]/g, "");
-
-    // Si la longitud del texto es mayor que 10, no hacer nada
     if (formattedText.length > 10) return;
 
     let finalText = formattedText;
-
-    // Insertar los separadores '/'
     if (formattedText.length >= 3) {
       finalText = `${formattedText.slice(0, 2)}/${formattedText.slice(2)}`;
     }
@@ -257,8 +235,16 @@ export default function AttendanceScreen() {
       finalText = `${finalText.slice(0, 5)}/${finalText.slice(5)}`;
     }
 
-    // Actualizar el estado con el texto formateado
     setBirthDay(finalText);
+  };
+
+  const cancelEdit = () => {
+    setIsEditing(false);
+    setName("");
+    setPhone("");
+    setBirthDay("");
+    setIsNew(false);
+    setSelectedPerson(null);
   };
 
   return (
@@ -267,215 +253,247 @@ export default function AttendanceScreen() {
       behavior={Platform.OS === "ios" ? "padding" : null}
     >
       <ScrollView
-        contentContainerStyle={styles.scrollContainer}
+        style={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <Text
-          style={{
-            fontSize: 24,
-            fontWeight: "bold",
-            color: "#000",
-            marginBottom: 16,
-            marginTop: 30,
-          }}
-        >
-          Registro de personas
-        </Text>
+        {/* Header con gradiente */}
+        <View style={styles.headerContainer}>
+          <Text style={styles.header}>
+            {isEditing ? "✏️ Editar Persona" : "👥 Registro de Personas"}
+          </Text>
+          <Text style={styles.subtitle}>
+            {isEditing ? "Modifica la información" : "Agregar nueva persona"}
+          </Text>
+        </View>
 
-        {/* Formulario de registro */}
-        {isEditing ? (
-          <>
-            <TextInput
-              style={styles.input}
-              placeholder="Nombre"
-              value={name}
-              onChangeText={setName}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Teléfono"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Fecha de nacimiento (dd/mm/aaaa)"
-              value={birthDay}
-              onChangeText={handleDateChange}
-              keyboardType="numeric"
-              maxLength={10}
-            />
-             {/* Switch para "¿Es nuevo?" */}
-          <View style={styles.switchContainer}>
-            <Text>¿Es nuevo?</Text>
-            <Switch
-              value={isNew} // El valor del Switch está vinculado al estado isNew
-              onValueChange={(value) => setIsNew(value)} // Actualiza el estado isNew cuando el usuario cambia el Switch
-              trackColor={{ false: "#767577", true: "#81b0ff" }}
-              thumbColor={isNew ? "#f5dd4b" : "#f4f3f4"}
-            />
-          </View>
-            <View style={styles.buttonContainer}>
-              {loading ? (
-                <ActivityIndicator size="small" color="#111" />
-              ) : (
-                <Button
-                  title="Guardar Cambios"
-                  onPress={saveChanges}
-                  color="#28a745"
-                />
-              )}
+        {/* Formulario */}
+        <View style={styles.formSection}>
+          <View style={styles.formCard}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>👤 Nombre completo</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Ingresa el nombre"
+                placeholderTextColor="#94a3b8"
+                value={name}
+                onChangeText={setName}
+              />
             </View>
-          </>
-        ) : (
-          <>
-            <TextInput
-              style={styles.input}
-              placeholder="Nombre"
-              value={name}
-              onChangeText={setName}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Teléfono"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Fecha de nacimiento (dd/mm/aaaa)"
-              value={birthDay}
-              onChangeText={handleDateChange}
-              keyboardType="numeric"
-              maxLength={10}
-            />
-            <View style={styles.switchContainer}>
-            <Text>¿Es nuevo?</Text>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>📱 Teléfono</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Número de 8 dígitos"
+                placeholderTextColor="#94a3b8"
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+                maxLength={8}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>🎂 Fecha de nacimiento</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="dd/mm/aaaa"
+                placeholderTextColor="#94a3b8"
+                value={birthDay}
+                onChangeText={handleDateChange}
+                keyboardType="numeric"
+                maxLength={10}
+              />
+            </View>
+
+            <View style={styles.switchGroup}>
+              <View style={styles.switchLabelContainer}>
+                <Text style={styles.switchLabel}>⭐ ¿Es nuevo?</Text>
+                <Text style={styles.switchSubtitle}>
+                  Marca si es la primera vez que asiste
+                </Text>
+              </View>
               <Switch
-              value={isNew}
-              onValueChange={(value) => setIsNew(value)}
-              trackColor={{ false: "#767577", true: "#81b0ff" }}
-              thumbColor={isNew ? "#f5dd4b" : "#f4f3f4"}
-            />
+                value={isNew}
+                onValueChange={(value) => setIsNew(value)}
+                trackColor={{ false: "#e2e8f0", true: "#6366f1" }}
+                thumbColor={isNew ? "#ffffff" : "#94a3b8"}
+              />
             </View>
-            <View style={styles.buttonContainer}>
-              {loading ? (
-                <ActivityIndicator size="small" color="#111" />
+
+            {/* Mensaje de estado */}
+            {message ? (
+              <View style={styles.messageContainer}>
+                <Text style={[
+                  styles.message,
+                  message.includes('éxito') ? styles.successMessage : styles.errorMessage
+                ]}>
+                  {message}
+                </Text>
+              </View>
+            ) : null}
+
+            {/* Botones de acción */}
+            <View style={styles.actionButtons}>
+              {isEditing ? (
+                <>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.cancelButton]}
+                    onPress={cancelEdit}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.saveButton]}
+                    onPress={saveChanges}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <ActivityIndicator size="small" color="#ffffff" />
+                    ) : (
+                      <Text style={styles.saveButtonText}>Guardar</Text>
+                    )}
+                  </TouchableOpacity>
+                </>
               ) : (
                 <TouchableOpacity
-                  style={styles.registerButton}
+                  style={[styles.actionButton, styles.registerButton]}
                   onPress={registerPerson}
+                  disabled={loading}
                 >
-                  <Text style={styles.registerButtonText}>Registrar</Text>
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <Text style={styles.registerButtonText}>Registrar Persona</Text>
+                  )}
                 </TouchableOpacity>
               )}
             </View>
-          </>
-        )}
-
-        {message ? <Text style={styles.message}>{message}</Text> : null}
-      </ScrollView>
-
-      <View style={styles.listContainer}>
-        <Text style={styles.listHeader}>Personas Registradas</Text>
-        {/* Botón para cargar personas */}
-        {!dataLoaded && (
-          <TouchableOpacity
-            style={styles.loadButton}
-            onPress={fetchPeople}
-            disabled={loadingPeople} // Desactiva el botón mientras carga
-          >
-            {loadingPeople ? (
-              <ActivityIndicator size="small" color="##111" />
-            ) : (
-              <Text style={styles.loadButtonText}>Cargar Personas</Text>
-            )}
-          </TouchableOpacity>
-        )}
-
-        {/* Mostrar la lista de personas solo si ya se cargaron */}
-        {dataLoaded && (
-          <>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Buscar por nombre"
-              value={search}
-              onChangeText={filterPeople}
-            />
-            {loadingPeople ? (
-              <ActivityIndicator
-                size="large"
-                color="#111"
-                style={styles.loader}
-              />
-            ) : (
-              <FlatList
-                data={filteredPeople}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                  <View style={styles.personItem}>
-                    <Text style={styles.personName}>{item.name}</Text>
-                    <Text style={styles.personPhone}>
-                      Número de teléfono: {item.phone}
-                    </Text>
-                    <Text style={styles.personPhone}>
-                      Fecha de nacimiento: {item.birthDay}
-                     
-                    </Text>
-                    <Text style={styles.personIsNew}>
-                     
-                      {item.isNew && "Es nuevo"}
-                    </Text>
-                    
-
-                    {/* Contenedor para los botones */}
-                    <View style={styles.optionsContainer}>
-                      <TouchableOpacity
-                        style={styles.optionButton}
-                        onPress={() => editPerson(item)}
-                      >
-                        <Text style={styles.optionText}>Editar</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.optionButton}
-                        onPress={() => confirmDeletePerson(item.id)}
-                      >
-                        <Text style={styles.optionText}>Eliminar</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-              />
-            )}
-          </>
-        )}
-        <Modal
-        visible={showNewOptionNotice}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowNewOptionNotice(false)}
-      >
-        <TouchableWithoutFeedback onPress={() => setShowNewOptionNotice(false)}>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>¡Nueva Opción!</Text>
-              <Text style={styles.modalText}>
-                Ahora puedes marcar a las personas como "nuevos" usando la opción "¿Es nuevo?".
-              </Text>
-              <Button
-                title="Entendido"
-                onPress={() => {
-                  AsyncStorage.setItem("newOptionNoticeShown", "true"); // Marcar que el aviso fue mostrado
-                  setShowNewOptionNotice(false);
-                }}
-              />
-            </View>
           </View>
-        </TouchableWithoutFeedback>
-      </Modal>;
-      </View>
+        </View>
+
+        {/* Lista de personas */}
+        <View style={styles.listSection}>
+          <Text style={styles.sectionTitle}>📋 Personas Registradas</Text>
+          
+          {!dataLoaded ? (
+            <TouchableOpacity
+              style={styles.loadButton}
+              onPress={fetchPeople}
+              disabled={loadingPeople}
+            >
+              {loadingPeople ? (
+                <ActivityIndicator size="small" color="#6366f1" />
+              ) : (
+                <>
+                  <Text style={styles.loadButtonText}>Cargar lista de personas</Text>
+                  <Text style={styles.loadButtonSubtext}>Toca para ver todas las personas</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          ) : (
+            <>
+              {/* Buscador */}
+              <TextInput
+                style={styles.searchInput}
+                placeholder="🔍 Buscar por nombre..."
+                placeholderTextColor="#94a3b8"
+                value={search}
+                onChangeText={filterPeople}
+              />
+
+              {/* Lista */}
+              {loadingPeople ? (
+                <ActivityIndicator size="large" color="#6366f1" style={styles.loader} />
+              ) : filteredPeople.length > 0 ? (
+                <FlatList
+                  data={filteredPeople}
+                  keyExtractor={(item) => item.id}
+                  showsVerticalScrollIndicator={false}
+                  renderItem={({ item }) => (
+                    <View style={styles.personCard}>
+                      <View style={styles.personHeader}>
+                        <View style={styles.personInfo}>
+                          <Text style={styles.personName}>{item.name}</Text>
+                          {item.isNew && (
+                            <View style={styles.newBadge}>
+                              <Text style={styles.newBadgeText}>NUEVO</Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+
+                      <View style={styles.personDetails}>
+                        <View style={styles.detailRow}>
+                          <Text style={styles.detailIcon}>📱</Text>
+                          <Text style={styles.detailText}>{item.phone}</Text>
+                        </View>
+                        <View style={styles.detailRow}>
+                          <Text style={styles.detailIcon}>🎂</Text>
+                          <Text style={styles.detailText}>{item.birthDay}</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.personActions}>
+                        <TouchableOpacity
+                          style={[styles.personActionButton, styles.editButton]}
+                          onPress={() => editPerson(item)}
+                        >
+                          <Text style={styles.editButtonText}>Editar</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.personActionButton, styles.deleteButton]}
+                          onPress={() => confirmDeletePerson(item.id)}
+                        >
+                          <Text style={styles.deleteButtonText}>Eliminar</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+                />
+              ) : (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateIcon}>👤</Text>
+                  <Text style={styles.emptyStateText}>No se encontraron personas</Text>
+                  <Text style={styles.emptyStateSubtext}>
+                    {search ? 'Intenta con otro término de búsqueda' : 'Registra la primera persona'}
+                  </Text>
+                </View>
+              )}
+            </>
+          )}
+        </View>
+
+        {/* Modal de nueva característica */}
+        <Modal
+          visible={showNewOptionNotice}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowNewOptionNotice(false)}
+        >
+          <TouchableWithoutFeedback onPress={() => setShowNewOptionNotice(false)}>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalIcon}>⭐</Text>
+                <Text style={styles.modalTitle}>¡Nueva Característica!</Text>
+                <Text style={styles.modalText}>
+                  Ahora puedes marcar a las personas como "nuevos" usando la opción "¿Es nuevo?".
+                </Text>
+                <TouchableOpacity
+                  style={styles.modalButton}
+                  onPress={() => {
+                    AsyncStorage.setItem("newOptionNoticeShown", "true");
+                    setShowNewOptionNotice(false);
+                  }}
+                >
+                  <Text style={styles.modalButtonText}>Entendido</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -483,173 +501,292 @@ export default function AttendanceScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F5F5F5", // Fondo claro
+    backgroundColor: "#f8fafc",
   },
   scrollContainer: {
-    padding: 16,
-    paddingBottom: 25,
-    backgroundColor: "#FFFFFF", // Fondo blanco
+    flex: 1,
+  },
+  headerContainer: {
+    backgroundColor: '#6366f1',
+    paddingTop: 60,
+    paddingBottom: 30,
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   header: {
     fontSize: 28,
-    fontWeight: "bold",
-    color: "#111", // Texto oscuro
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#c7d2fe',
+    opacity: 0.9,
+  },
+  formSection: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+  },
+  formCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  inputGroup: {
     marginBottom: 20,
-    textAlign: "center",
-    marginTop: 40,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 8,
   },
   input: {
-    height: 45,
-    borderColor: "#DDD", // Borde gris claro
-    borderWidth: 1,
-    marginBottom: 16,
-    paddingLeft: 12,
-    borderRadius: 8,
-    backgroundColor: "#FFFFFF", // Fondo blanco
-    color: "#111", // Texto oscuro
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     fontSize: 16,
+    color: '#334155',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  switchGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    marginTop: 8,
+  },
+  switchLabelContainer: {
+    flex: 1,
+    marginRight: 16,
+  },
+  switchLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 2,
+  },
+  switchSubtitle: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  messageContainer: {
+    marginVertical: 16,
+    padding: 12,
+    borderRadius: 8,
   },
   message: {
-    marginTop: 10,
-    textAlign: "center",
-    color: "#007BFF", // Azul para mensajes destacados
-    fontWeight: "bold",
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
   },
-  listContainer: {
-    flex: 15,
-    padding: 10,
-    borderTopWidth: 1,
-    borderTopColor: "#EEE", // Línea superior gris muy claro
-    backgroundColor: "#FFFFFF", // Fondo blanco
-    borderRadius: 8,
-    width: "100%", // Usa todo el ancho disponible
+  successMessage: {
+    color: '#059669',
+    backgroundColor: '#d1fae5',
   },
-
-  listHeader: {
-    fontSize: 20,
-    marginBottom: 10,
-    fontWeight: "bold",
-    color: "#111", // Texto oscuro
+  errorMessage: {
+    color: '#dc2626',
+    backgroundColor: '#fee2e2',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  actionButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  registerButton: {
+    backgroundColor: '#6366f1',
+  },
+  registerButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  saveButton: {
+    backgroundColor: '#059669',
+  },
+  saveButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  cancelButton: {
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  cancelButtonText: {
+    color: '#64748b',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  listSection: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 16,
+  },
+  loadButton: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  loadButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6366f1',
+    marginBottom: 4,
+  },
+  loadButtonSubtext: {
+    fontSize: 14,
+    color: '#64748b',
   },
   searchInput: {
-    height: 40,
-    borderColor: "#DDD", // Borde gris claro
-    borderWidth: 1,
-    marginBottom: 10,
-    paddingLeft: 12,
-    borderRadius: 8,
-    backgroundColor: "#FFFFFF", // Fondo blanco
-    color: "#111", // Texto oscuro
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     fontSize: 16,
-    marginVertical: 10, // Espaciado alrededor del campo de búsqueda
+    color: '#334155',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  personItem: {
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#EEE", // Línea inferior gris claro
-    backgroundColor: "#FAFAFA", // Fondo ligeramente más claro
-    borderRadius: 8,
-    marginBottom: 8,
-    width: "100%", // Usa todo el ancho disponible
+  personCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  personHeader: {
+    marginBottom: 12,
+  },
+  personInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   personName: {
     fontSize: 18,
-    fontWeight: "bold",
-    color: "#111", // Texto oscuro
+    fontWeight: '600',
+    color: '#334155',
+    flex: 1,
   },
-  personPhone: {
-    fontSize: 16,
-    color: "#555", // Texto gris medio
+  newBadge: {
+    backgroundColor: '#fbbf24',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  personIsNew: {
-    fontSize: 16,
-    fontWeight :'bold',
-    color : "#008f39", // Texto gris medio
+  newBadgeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#ffffff',
   },
-  optionsContainer: {
-    flexDirection: "row", // Coloca los elementos en fila
-    justifyContent: "space-around", // Espacio igual entre los botones
-    alignItems: "center", // Centrado vertical
-    marginTop: 10,
+  personDetails: {
+    marginBottom: 16,
   },
-  optionButton: {
-    flex: 1, // Hace que los botones compartan el espacio disponible
-    paddingVertical: 10, // Más espacio vertical
-    marginHorizontal: 5, // Espacio entre los botones
-    backgroundColor: "#FFFFFF", // Fondo acorde a la paleta de colores
-    borderRadius: 6,
-    alignItems: "center",
-    borderWidth: 1,
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
   },
-  optionText: {
-    color: "#111", // Texto blanco para contraste
+  detailIcon: {
     fontSize: 14,
-    fontWeight: "bold",
+    marginRight: 8,
+    width: 20,
   },
-  buttonContainer: {
-    marginTop: 10,
-    alignItems: "center",
+  detailText: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  personActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  personActionButton: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  editButton: {
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  editButtonText: {
+    color: '#6366f1',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  deleteButton: {
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  deleteButtonText: {
+    color: '#dc2626',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyStateIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  emptyStateText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 8,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: '#64748b',
+    textAlign: 'center',
   },
   loader: {
-    marginTop: 10,
-  },
-  button: {
-    padding: 10,
-    backgroundColor: "#FFFFFF", // Fondo blanco
-    borderWidth: 1,
-    borderColor: "#DDD", // Borde gris claro
-    borderRadius: 5,
-    alignItems: "center",
-  },
-  buttonText: {
-    color: "#111", // Texto oscuro
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  registerButton: {
-    paddingVertical: 12, // Espaciado vertical
-    paddingHorizontal: 24, // Espaciado horizontal
-    backgroundColor: "#FFFFFF", // Fondo blanco
-    borderRadius: 8, // Bordes redondeados
-    borderWidth: 1, // Borde sutil
-
-    alignItems: "center", // Centrado horizontal
-    shadowColor: "#000", // Sombra ligera
-
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3, // Sombra para Android
-  },
-  registerButtonText: {
-    fontSize: 16, // Tamaño de fuente destacado
-    fontWeight: "bold", // Texto en negrita
-    color: "#111", // Texto oscuro
-  },
-  loadButton: {
-    backgroundColor: "#FFFFFF", // Color principal de la paleta
-    padding: 10,
-    borderRadius: 8,
-    alignItems: "center",
-    marginVertical: 10,
-    borderRadius: 8, // Bordes redondeados
-    borderWidth: 1,
-    alignItems: "center", // Centrado horizontal
-    shadowColor: "#000", // Sombra ligera
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  loadButtonText: {
-    color: "#111", // Contraste para el texto
-    fontSize: 16,
-    fontWeight: "bold",
-  },
- 
-  switchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    
+    marginTop: 20,
   },
   modalOverlay: {
     flex: 1,
@@ -658,23 +795,38 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContent: {
-    backgroundColor: "#FFF",
-    borderRadius: 10,
-    padding: 20,
-    width: "80%",
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 24,
+    width: "85%",
     alignItems: "center",
+  },
+  modalIcon: {
+    fontSize: 48,
+    marginBottom: 16,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    marginBottom: 10,
-    color: "#333",
+    marginBottom: 12,
+    color: "#334155",
   },
   modalText: {
     fontSize: 16,
     textAlign: "center",
-    marginBottom: 20,
-    color: "#666",
+    marginBottom: 24,
+    color: "#64748b",
+    lineHeight: 22,
   },
-
+  modalButton: {
+    backgroundColor: '#6366f1',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  modalButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });

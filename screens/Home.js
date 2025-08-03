@@ -7,6 +7,7 @@ import {
   Dimensions,
   Image,
   TouchableOpacity,
+  ScrollView,
 } from "react-native";
 import { BarChart, LineChart } from "react-native-chart-kit";
 import { Ionicons } from "@expo/vector-icons";
@@ -21,7 +22,7 @@ import {
   limit,
 } from "firebase/firestore";
 import DashboardCard from "../components/DashboardCard";
-import { db } from "../database/firebase"; // Importa tu configuración de Firebase
+import { db } from "../database/firebase";
 
 import Animated, {
   useSharedValue,
@@ -34,82 +35,61 @@ const Dashboard = () => {
   const [lastSession, setLastSession] = useState(null);
   const [top3Attendees, setTop3Attendees] = useState([]);
   const [monthlyAttendance, setMonthlyAttendance] = useState([]);
-  const [loading, setLoading] = useState(false); // Estado de carga
+  const [loading, setLoading] = useState(false);
   
   const monthNames = [
-    "ene",
-    "feb",
-    "mar",
-    "abr",
-    "may",
-    "jun",
-    "jul",
-    "ago",
-    "sep",
-    "oct",
-    "nov",
-    "dic",
+    "ene", "feb", "mar", "abr", "may", "jun",
+    "jul", "ago", "sep", "oct", "nov", "dic",
   ];
+  
   const rotation = useSharedValue(0);
 
- 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        await fetchTop3Attendees();
+        await fetchLastSession();
+        await fetchMonthlyAttendance();
+      } catch (error) {
+        console.error("Error al cargar los datos:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
+    fetchData();
+  }, []);
 
- useEffect(() => {
-  const fetchData = async () => {
+  const fetchTop3Attendees = async () => {
     try {
-      setLoading(true);
-      await fetchTop3Attendees();
-      await fetchLastSession();
-      await fetchMonthlyAttendance();
+      const countsRef = collection(db, "attendanceCounts");
+      const snapshot = await getDocs(countsRef);
+
+      const allData = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          name: data.name || "Desconocido",
+          count: data.count || 0,
+        };
+      });
+
+      const excludedRef = collection(db, "excludedPeople");
+      const excludedSnapshot = await getDocs(excludedRef);
+      const excludedNames = excludedSnapshot.docs.map((doc) =>
+        doc.data().name.trim()
+      );
+
+      const top3Data = allData
+        .filter((person) => !excludedNames.includes(person.name))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3);
+
+      setTop3Attendees(top3Data);
     } catch (error) {
-      console.error("Error al cargar los datos:", error);
-    } finally {
-      setLoading(false);
+      console.error("Error al obtener top 3 desde attendanceCounts:", error);
     }
   };
-
-  fetchData();
-}, []);
-
-
-  const handleLoadStatistics = () => {
-    setShouldLoadData(true); // Activa la carga de datos
-    setDataLoaded(true); // Indica que los datos han sido cargados
-    setLoading(true)
-  };
-  const fetchTop3Attendees = async () => {
-  try {
-    const countsRef = collection(db, "attendanceCounts");
-    const snapshot = await getDocs(countsRef);
-
-    const allData = snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        name: data.name || "Desconocido",
-        count: data.count || 0,
-      };
-    });
-
-    // Obtener lista de excluidos
-    const excludedRef = collection(db, "excludedPeople");
-    const excludedSnapshot = await getDocs(excludedRef);
-    const excludedNames = excludedSnapshot.docs.map((doc) =>
-      doc.data().name.trim()
-    );
-
-    // Filtrar y ordenar el top 3
-    const top3Data = allData
-      .filter((person) => !excludedNames.includes(person.name))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 3);
-
-    setTop3Attendees(top3Data);
-  } catch (error) {
-    console.error("Error al obtener top 3 desde attendanceCounts:", error);
-  }
-};
-
 
   const fetchLastSession = async () => {
     try {
@@ -129,7 +109,6 @@ const Dashboard = () => {
         );
         const sessionSnapshot = await getDocs(sessionQuery);
 
-        // Contar solo los registros con attended: true
         let attendedCount = 0;
         sessionSnapshot.forEach((doc) => {
           const data = doc.data();
@@ -150,247 +129,504 @@ const Dashboard = () => {
   };
 
   const fetchMonthlyAttendance = async () => {
-  try {
-    const year = new Date().getFullYear().toString();
-    const summaryRef = doc(db, "attendanceSummary", year);
-    const snapshot = await getDoc(summaryRef);
+    try {
+      const year = new Date().getFullYear().toString();
+      const summaryRef = doc(db, "attendanceSummary", year);
+      const snapshot = await getDoc(summaryRef);
 
-    if (snapshot.exists()) {
-      const data = snapshot.data();
-      const formattedData = monthNames.map((month) => ({
-        month,
-        count: data[month] || 0,
-      }));
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        const formattedData = monthNames.map((month) => ({
+          month,
+          count: data[month] || 0,
+        }));
 
-      setMonthlyAttendance(formattedData);
-    } else {
-      setMonthlyAttendance([]);
+        setMonthlyAttendance(formattedData);
+      } else {
+        setMonthlyAttendance([]);
+      }
+    } catch (error) {
+      console.error("Error al obtener resumen mensual:", error);
     }
-  } catch (error) {
-    console.error("Error al obtener resumen mensual:", error);
-  }
-};
+  };
+
+  // Función para formatear la fecha de manera más amigable
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const options = { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    };
+    return date.toLocaleDateString('es-ES', options);
+  };
+
+  // Función para obtener el emoji de la sesión
+  const getSessionEmoji = (session) => {
+    return session === 'AM' ? '🌅' : '🌆';
+  };
 
   if (loading) {
-    // Muestra el preloader mientras carga
     return (
       <View style={styles.loaderContainer}>
-        <Image
-          source={require("../assets/preloader.png")} // Cambia esta ruta a la ubicación de tu imagen
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        <Text style={styles.loaderText}>Cargando datos...</Text>
-        <ActivityIndicator size="large" color="#007aff" />
+        <View style={styles.logoContainer}>
+          <Image
+            source={require("../assets/preloader.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
+        <Text style={styles.loaderText}>Cargando dashboard...</Text>
+        <ActivityIndicator size="large" color="#6366f1" />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Text
-        style={{
-          fontSize: 24,
-          fontWeight: "bold",
-          color: "#000",
-          marginBottom: 16,
-        }}
-      >
-        Principal
-      </Text>
-  
-     
-    
-   
-        <>
-          {/* Fila con dos tarjetas */}
-          <View style={styles.row}>
-            <DashboardCard
-              title="Top 3 Asistentes"
-              top3Data={top3Attendees || []} // Si top3Attendees es null o undefined, usa un array vacío
-              cardStyle={styles.dashboardCard}
-            />
-            {lastSession ? ( // Solo renderiza si lastSession existe
-              <View style={styles.lastSessionCard}>
-                <View style={styles.iconWrapper}>
-                  <Ionicons name="calendar-outline" style={styles.icon} />
-                </View>
-                <Text style={styles.lastSessionTitle}>{lastSession.attended}</Text>
-                <Text style={styles.subtitle}>Asistencia del último culto</Text>
-                <Text style={styles.details}>
-                  Fecha: {lastSession.date} - Sesión: {lastSession.session}
-                </Text>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* Header con gradiente */}
+      <View style={styles.headerContainer}>
+        <Text style={styles.header}>🏠 Dashboard</Text>
+        <Text style={styles.subtitle}>Resumen de asistencia</Text>
+      </View>
+
+      {/* Tarjetas principales */}
+      <View style={styles.cardsSection}>
+        <View style={styles.row}>
+          {/* Tarjeta Top 3 */}
+          <View style={styles.top3Card}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardIcon}>🏆</Text>
+              <Text style={styles.cardTitle}>Top 3</Text>
+            </View>
+            <Text style={styles.cardSubtitle}>Asistentes más frecuentes</Text>
+            
+            {top3Attendees && top3Attendees.length > 0 ? (
+              <View style={styles.top3List}>
+                {top3Attendees.map((attendee, index) => (
+                  <View key={index} style={styles.top3Item}>
+                    <View style={styles.rankBadge}>
+                      <Text style={styles.rankText}>{index + 1}</Text>
+                    </View>
+                    <View style={styles.attendeeInfo}>
+                      <Text style={styles.attendeeName} numberOfLines={1}>
+                        {attendee.name}
+                      </Text>
+                      <Text style={styles.attendeeCount}>
+                        {attendee.count} asistencias
+                      </Text>
+                    </View>
+                  </View>
+                ))}
               </View>
             ) : (
-              <Text style={styles.subtitle}>No hay datos de la última sesión</Text>
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateText}>Sin datos</Text>
+              </View>
             )}
           </View>
-  
-          {/* Gráfico de asistencia anual */}
-          <View style={styles.chartContainer}>
-            <Text style={styles.chartTitle}>Asistencia anual</Text>
-            {monthlyAttendance && monthlyAttendance.length > 0 ? ( // Solo renderiza si hay datos
+
+          {/* Tarjeta última sesión */}
+          <View style={styles.lastSessionCard}>
+            <View style={styles.sessionHeader}>
+              <Text style={styles.sessionIcon}>
+                {lastSession ? getSessionEmoji(lastSession.session) : '📅'}
+              </Text>
+            </View>
+            
+            {lastSession ? (
+              <>
+                <Text style={styles.attendanceNumber}>
+                  {lastSession.attended}
+                </Text>
+                <Text style={styles.attendanceLabel}>
+                  personas asistieron
+                </Text>
+                <View style={styles.sessionDetails}>
+                  <Text style={styles.sessionInfo}>
+                    {lastSession.session === 'AM' ? 'Mañana' : 'Tarde'}
+                  </Text>
+                  <Text style={styles.sessionDate}>
+                    {formatDate(lastSession.date)}
+                  </Text>
+                </View>
+              </>
+            ) : (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateText}>Sin datos recientes</Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </View>
+
+      {/* Gráfico de asistencia anual */}
+      <View style={styles.chartSection}>
+        <Text style={styles.sectionTitle}>📈 Asistencia anual {new Date().getFullYear()}</Text>
+        
+        <View style={styles.chartContainer}>
+          {monthlyAttendance && monthlyAttendance.length > 0 ? (
+            <>
+              {/* Estadísticas rápidas */}
+              <View style={styles.quickStats}>
+                <View style={styles.quickStatItem}>
+                  <Text style={styles.quickStatNumber}>
+                    {monthlyAttendance.reduce((sum, item) => sum + item.count, 0)}
+                  </Text>
+                  <Text style={styles.quickStatLabel}>Total del año</Text>
+                </View>
+                <View style={styles.quickStatDivider} />
+                <View style={styles.quickStatItem}>
+                  <Text style={styles.quickStatNumber}>
+                    {Math.round(monthlyAttendance.reduce((sum, item) => sum + item.count, 0) / 12)}
+                  </Text>
+                  <Text style={styles.quickStatLabel}>Promedio mensual</Text>
+                </View>
+              </View>
+
               <LineChart
                 data={{
                   labels: monthNames.filter((_, index) => index % 2 === 0),
                   datasets: [
                     {
                       data: monthlyAttendance.map((item) => item.count),
-                      color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                      strokeWidth: 2,
+                      color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
+                      strokeWidth: 3,
                     },
                   ],
                 }}
-                width={Dimensions.get("window").width * 0.9}
-                height={220}
+                width={Dimensions.get("window").width - 48}
+                height={200}
                 yAxisInterval={10}
                 chartConfig={{
                   backgroundColor: "#ffffff",
                   backgroundGradientFrom: "#ffffff",
-                  backgroundGradientTo: "#ffffff",
+                  backgroundGradientTo: "#f8fafc",
                   decimalPlaces: 0,
-                  color: (opacity = 1) => `rgba(200, 200, 200, ${opacity})`,
-                  labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                  color: (opacity = 1) => `rgba(226, 232, 240, ${opacity})`,
+                  labelColor: (opacity = 1) => `rgba(51, 65, 85, ${opacity})`,
                   style: { borderRadius: 16 },
                   propsForDots: {
-                    r: "4",
+                    r: "5",
                     strokeWidth: "2",
                     stroke: "#ffffff",
+                    fill: "#6366f1",
                   },
                   propsForBackgroundLines: {
                     strokeDasharray: "",
+                    stroke: "#e2e8f0",
                   },
                 }}
                 bezier
                 style={styles.chart}
               />
-            ) : (
-              <Text style={styles.subtitle}>No hay datos para mostrar</Text>
-            )}
-          </View>
-        </>
-  
-    </View>
+            </>
+          ) : (
+            <View style={styles.emptyChart}>
+              <Text style={styles.emptyChartIcon}>📊</Text>
+              <Text style={styles.emptyChartText}>No hay datos para mostrar</Text>
+              <Text style={styles.emptyChartSubtext}>
+                Los datos aparecerán cuando haya registros de asistencia
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      {/* Sección de acciones rápidas */}
+      <View style={styles.actionsSection}>
+        <Text style={styles.sectionTitle}>⚡ Acciones rápidas</Text>
+        
+        <View style={styles.actionCards}>
+          <TouchableOpacity style={styles.actionCard}>
+            <Text style={styles.actionIcon}>📊</Text>
+            <Text style={styles.actionTitle}>Estadísticas</Text>
+            <Text style={styles.actionSubtitle}>Ver más detalles</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.actionCard}>
+            <Text style={styles.actionIcon}>👥</Text>
+            <Text style={styles.actionTitle}>Personas</Text>
+            <Text style={styles.actionSubtitle}>Gestionar registros</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
   loaderContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f4f4f4",
+    backgroundColor: "#f8fafc",
   },
-  logo: { width: 100, height: 100, marginBottom: 20 }, 
-  container: {
-    flex: 1,
-    padding: 16,
-    marginTop: 30,
-    backgroundColor: "#f9f9f9",
-    flexDirection: "column",
-    alignItems: "center",
+  logoContainer: {
+    marginBottom: 24,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#000",
-    marginBottom: 16,
-    textAlign: "center",
+  logo: { 
+    width: 80, 
+    height: 80,
   },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
+  loaderText: {
+    fontSize: 16,
+    color: "#64748b",
     marginBottom: 16,
   },
-  dashboardCard: {
-    backgroundColor: "#000",
-    width: "48%",
+  headerContainer: {
+    backgroundColor: '#6366f1',
+    paddingTop: 60,
+    paddingBottom: 30,
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
-  lastSessionCard: {
-    width: "48%",
-    backgroundColor: "#ffffff",
-    borderRadius: 20,
-    padding: 20,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
-    borderWidth: 1,
-    borderColor: "#e3e3e3",
-  },
-  iconWrapper: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 16,
-    backgroundColor: "#f5f5f5",
-  },
-  icon: {
-    fontSize: 30,
-    color: "#000",
-  },
-  lastSessionTitle: {
-    fontSize: 50,
-    fontWeight: "800",
-    color: "#000",
-    marginBottom: 8,
+  header: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 4,
   },
   subtitle: {
     fontSize: 16,
-    fontWeight: "600",
-    color: "#757575",
+    color: '#c7d2fe',
+    opacity: 0.9,
+  },
+  cardsSection: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+  },
+  row: {
+    flexDirection: "row",
+    gap: 16,
+  },
+  top3Card: {
+    flex: 1,
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  cardIcon: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  cardSubtitle: {
+    fontSize: 12,
+    color: '#64748b',
+    marginBottom: 16,
+  },
+  top3List: {
+    gap: 12,
+  },
+  top3Item: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rankBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#6366f1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  rankText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  attendeeInfo: {
+    flex: 1,
+  },
+  attendeeName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  attendeeCount: {
+    fontSize: 12,
+    color: '#64748b',
+  },
+  lastSessionCard: {
+    flex: 1,
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 20,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  sessionHeader: {
+    marginBottom: 16,
+  },
+  sessionIcon: {
+    fontSize: 32,
+  },
+  attendanceNumber: {
+    fontSize: 36,
+    fontWeight: "bold",
+    color: "#6366f1",
     marginBottom: 4,
   },
-  details: {
+  attendanceLabel: {
     fontSize: 14,
-    color: "#9E9E9E",
-    textAlign: "center",
-    marginTop: 8,
+    color: "#64748b",
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  sessionDetails: {
+    alignItems: 'center',
+  },
+  sessionInfo: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 4,
+  },
+  sessionDate: {
+    fontSize: 12,
+    color: '#64748b',
+    textAlign: 'center',
+    textTransform: 'capitalize',
+  },
+  chartSection: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 16,
   },
   chartContainer: {
     backgroundColor: "#ffffff",
-    borderRadius: 20,
-    padding: 3,
+    borderRadius: 16,
+    padding: 20,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: "#d0d0d0",
-    width: "100%",
-    alignItems: "center",
+    shadowRadius: 8,
+    elevation: 4,
   },
-  chartTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    textAlign: "center",
-    color: "#333",
-    marginBottom: 10,
+  quickStats: {
+    flexDirection: 'row',
+    marginBottom: 20,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 16,
+  },
+  quickStatItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  quickStatNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#6366f1',
+    marginBottom: 4,
+  },
+  quickStatLabel: {
+    fontSize: 12,
+    color: '#64748b',
+    textAlign: 'center',
+  },
+  quickStatDivider: {
+    width: 1,
+    backgroundColor: '#e2e8f0',
+    marginHorizontal: 16,
   },
   chart: {
-    marginVertical: 8,
     borderRadius: 16,
   },
-  loadButton: {
-    backgroundColor: "#007aff", // Color de fondo del botón
-    padding: 15, // Espaciado interno
-    borderRadius: 10, // Bordes redondeados
-    alignSelf: "center", // Centra el botón horizontalmente
-    marginTop: 20, // Margen superior
-    width: "60%", // Ancho del botón (puedes ajustarlo)
-    justifyContent: "center", // Centra el texto verticalmente
-    alignItems: "center", // Centra el texto horizontalmente
+  emptyChart: {
+    alignItems: 'center',
+    paddingVertical: 40,
   },
-  loadButtonText: {
-    color: "#fff", // Color del texto
-    fontSize: 16, // Tamaño del texto
-    fontWeight: "bold", // Texto en negrita
+  emptyChartIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  emptyChartText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 8,
+  },
+  emptyChartSubtext: {
+    fontSize: 14,
+    color: '#64748b',
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  actionsSection: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 32,
+  },
+  actionCards: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  actionCard: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  actionIcon: {
+    fontSize: 24,
+    marginBottom: 8,
+  },
+  actionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 4,
+  },
+  actionSubtitle: {
+    fontSize: 12,
+    color: '#64748b',
+    textAlign: 'center',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: '#94a3b8',
   },
 });
 

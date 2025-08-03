@@ -14,47 +14,45 @@ import {
   Alert,
   FlatList,
   Button,
+  Dimensions,
+  Image,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient"; // Para los gradientes
-import Icon from "react-native-vector-icons/MaterialIcons"; // Para los íconos
+import { Ionicons } from "@expo/vector-icons";
 import { db } from "../database/firebase";
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc } from "firebase/firestore";
-import { Switch } from "react-native"; // Importa el Switch
+import { Switch } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function RegisterKid({ navigation }) {
   const [name, setName] = useState("");
   const [birthDay, setBirthDay] = useState("");
   const [comments, setComments] = useState("");
-  const [selectedClasses, setSelectedClasses] = useState([]); // Array de clases seleccionadas
-  const [classes, setClasses] = useState([]); // Lista de clases desde Firestore
+  const [selectedClasses, setSelectedClasses] = useState([]);
+  const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [showClassPicker, setShowClassPicker] = useState(false); // Modal para seleccionar clase en el formulario
-  const [showFilterClassPicker, setShowFilterClassPicker] = useState(false); // Modal para seleccionar clase en el filtro
-  const [kids, setKids] = useState([]); // Lista de niños
-  const [filteredKids, setFilteredKids] = useState([]); // Lista de niños filtrados
-  const [isEditing, setIsEditing] = useState(false); // Modo edición
-  const [selectedKid, setSelectedKid] = useState(null); // Niño seleccionado para editar
-  const [loadingKids, setLoadingKids] = useState(false); // Estado de carga de niños
-  const [dataLoaded, setDataLoaded] = useState(false); // Indica si los niños ya se cargaron
-  const [searchName, setSearchName] = useState(""); // Filtro por nombre
-  const [searchClass, setSearchClass] = useState(""); // Filtro por clase
-  const [showFilters, setShowFilters] = useState(false); // Mostrar campos de búsqueda
-  const [isNew, setIsNew] = useState(false); // Estado para "¿Es nuevo?"
-   const [showNewOptionNotice, setShowNewOptionNotice] = useState(false);//para mostral modal
-
-
+  const [showClassPicker, setShowClassPicker] = useState(false);
+  const [showFilterClassPicker, setShowFilterClassPicker] = useState(false);
+  const [kids, setKids] = useState([]);
+  const [filteredKids, setFilteredKids] = useState([]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [selectedKid, setSelectedKid] = useState(null);
+  const [loadingKids, setLoadingKids] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [searchName, setSearchName] = useState("");
+  const [searchClass, setSearchClass] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [isNew, setIsNew] = useState(false);
+  const [showNewOptionNotice, setShowNewOptionNotice] = useState(false);
 
   useEffect(() => {
     const checkIfNoticeWasShown = async () => {
       const noticeShown = await AsyncStorage.getItem("newOptionNoticeShownKids");
       if (!noticeShown) {
-        setShowNewOptionNotice(true); // Mostrar el aviso si no se ha mostrado antes
+        setShowNewOptionNotice(true);
       }
     };
-  
     checkIfNoticeWasShown();
-    }, []);
+  }, []);
 
   // Función para validar la fecha de nacimiento
   const validateDate = (date) => {
@@ -104,9 +102,9 @@ export default function RegisterKid({ navigation }) {
         ...doc.data(),
       }));
       setKids(kidsList);
-      setFilteredKids(kidsList); // Inicializar la lista filtrada con todos los niños
+      setFilteredKids(kidsList);
       setDataLoaded(true);
-      setShowFilters(true); // Mostrar los campos de búsqueda después de cargar los niños
+      setShowFilters(true);
     } catch (error) {
       console.error("Error al cargar niños:", error);
     } finally {
@@ -118,9 +116,9 @@ export default function RegisterKid({ navigation }) {
   const toggleClassSelection = (classItem) => {
     setSelectedClasses((prev) => {
       if (prev.includes(classItem.name)) {
-        return prev.filter((item) => item !== classItem.name); // Deseleccionar
+        return prev.filter((item) => item !== classItem.name);
       } else {
-        return [...prev, classItem.name]; // Seleccionar
+        return [...prev, classItem.name];
       }
     });
   };
@@ -141,21 +139,19 @@ export default function RegisterKid({ navigation }) {
       setLoading(true);
 
       if (isEditing) {
-        // Actualizar niño existente
         await updateDoc(doc(db, "kids", selectedKid.id), {
           name,
           birthDay,
           isNew,
-          classes: selectedClasses, // Guardar el array de clases
+          classes: selectedClasses,
           comments,
         });
         Alert.alert("Éxito", "Niño actualizado con éxito");
       } else {
-        // Registrar nuevo niño
         await addDoc(collection(db, "kids"), {
           name,
           birthDay,
-          classes: selectedClasses, // Guardar el array de clases
+          classes: selectedClasses,
           isKid: true,
           isNew,
           comments,
@@ -183,7 +179,6 @@ export default function RegisterKid({ navigation }) {
   // Función para eliminar un niño
   const deleteKid = async (id) => {
     try {
-      
       await deleteDoc(doc(db, "kids", id));
       Alert.alert("Éxito", "Niño eliminado con éxito");
       fetchKids();
@@ -213,13 +208,12 @@ export default function RegisterKid({ navigation }) {
 
   // Función para editar un niño
   const editKid = (kid) => {
-    
     setSelectedKid(kid);
     setName(kid.name);
     setBirthDay(kid.birthDay);
-    setSelectedClasses(kid.classes); // Cargar las clases seleccionadas
-    setComments(kid.comments || ""); // 👈 cargar en el formulario
-    setIsNew(kid.isNew || false); // Cargar el valor de isNew
+    setSelectedClasses(kid.classes);
+    setComments(kid.comments || "");
+    setIsNew(kid.isNew || false);
     setIsEditing(true);
   };
 
@@ -227,14 +221,12 @@ export default function RegisterKid({ navigation }) {
   const filterKids = () => {
     let filtered = kids;
 
-    // Filtrar por nombre
     if (searchName) {
       filtered = filtered.filter((kid) =>
         kid.name.toLowerCase().includes(searchName.toLowerCase())
       );
     }
 
-    // Filtrar por clase
     if (searchClass) {
       filtered = filtered.filter((kid) =>
         kid.classes.includes(searchClass)
@@ -254,161 +246,369 @@ export default function RegisterKid({ navigation }) {
     fetchClasses();
   }, []);
 
+  const clearForm = () => {
+    setName("");
+    setBirthDay("");
+    setComments("");
+    setSelectedClasses([]);
+    setIsEditing(false);
+    setSelectedKid(null);
+    setIsNew(false);
+  };
 
-    
+  if (loadingKids && kids.length === 0 && dataLoaded === false) {
+    return (
+      <View style={styles.loaderContainer}>
+        <View style={styles.logoContainer}>
+          <Image
+            source={require("../assets/preloader.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
+        <Text style={styles.loaderText}>Cargando niños...</Text>
+        <ActivityIndicator size="large" color="#6366f1" />
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : null}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* Título de la pantalla */}
-        <Text style={styles.title}>{isEditing ? "Editar Niño" : "Registrar Nuevo Niño"}</Text>
+      {/* Header con gradiente */}
+      <View style={styles.headerContainer}>
+        <Text style={styles.header}>
+          {isEditing ? "✏️ Editar Niño" : "👶 Registrar Niño"}
+        </Text>
+        <Text style={styles.subtitle}>
+          {isEditing ? "Modifica la información del niño" : "Agrega un nuevo niño a la base de datos"}
+        </Text>
+      </View>
 
-        {/* Campo de nombre */}
-        <View style={styles.inputContainer}>
-          <Icon name="person" size={24} color="#666" style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Nombre del niño"
-            value={name}
-            onChangeText={setName}
-          />
+      <ScrollView 
+        style={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Estadísticas rápidas */}
+        {dataLoaded && (
+          <View style={styles.statsContainer}>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>{kids.length}</Text>
+              <Text style={styles.statLabel}>Niños registrados</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>{filteredKids.length}</Text>
+              <Text style={styles.statLabel}>Mostrando</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>
+                {kids.filter(kid => kid.isNew).length}
+              </Text>
+              <Text style={styles.statLabel}>Nuevos</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Formulario */}
+        <View style={styles.formSection}>
+          <Text style={styles.sectionTitle}>📝 Información del niño</Text>
+          
+          <View style={styles.formCard}>
+            {/* Campo de nombre */}
+            <View style={styles.inputContainer}>
+              <View style={styles.inputIcon}>
+                <Ionicons name="person" size={20} color="#6366f1" />
+              </View>
+              <TextInput
+                style={styles.input}
+                placeholder="Nombre del niño"
+                value={name}
+                onChangeText={setName}
+                placeholderTextColor="#94a3b8"
+              />
+            </View>
+
+            {/* Campo de fecha de nacimiento */}
+            <View style={styles.inputContainer}>
+              <View style={styles.inputIcon}>
+                <Ionicons name="calendar" size={20} color="#6366f1" />
+              </View>
+              <TextInput
+                style={styles.input}
+                placeholder="Fecha de nacimiento (dd/mm/aaaa)"
+                value={birthDay}
+                onChangeText={handleDateChange}
+                keyboardType="numeric"
+                maxLength={10}
+                placeholderTextColor="#94a3b8"
+              />
+            </View>
+
+            {/* Campo de comentarios */}
+            <View style={[styles.inputContainer, styles.textAreaContainer]}>
+              <View style={styles.inputIcon}>
+                <Ionicons name="document-text" size={20} color="#6366f1" />
+              </View>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Comentarios (opcional)"
+                value={comments}
+                onChangeText={setComments}
+                multiline
+                numberOfLines={3}
+                placeholderTextColor="#94a3b8"
+                textAlignVertical="top"
+              />
+            </View>
+
+            {/* Selector de clases */}
+            <TouchableOpacity
+              style={styles.classPickerContainer}
+              onPress={() => setShowClassPicker(true)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.inputIcon}>
+                <Ionicons name="library" size={20} color="#6366f1" />
+              </View>
+              <View style={styles.classPickerContent}>
+                <Text style={[
+                  styles.classPickerText,
+                  selectedClasses.length === 0 && styles.classPickerPlaceholder
+                ]}>
+                  {selectedClasses.length > 0
+                    ? selectedClasses.join(", ")
+                    : "Selecciona una o más clases"}
+                </Text>
+                {selectedClasses.length > 0 && (
+                  <View style={styles.classesBadgeContainer}>
+                    <Text style={styles.classesBadge}>
+                      {selectedClasses.length} clase{selectedClasses.length > 1 ? 's' : ''}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <Ionicons name="chevron-down" size={20} color="#94a3b8" />
+            </TouchableOpacity>
+
+            {/* Switch para "¿Es nuevo?" */}
+            <View style={styles.switchContainer}>
+              <View style={styles.switchLabelContainer}>
+                <Ionicons name="star" size={20} color="#f59e0b" style={styles.switchIcon} />
+                <Text style={styles.switchLabel}>¿Es nuevo?</Text>
+              </View>
+              <Switch
+                value={isNew}
+                onValueChange={(value) => setIsNew(value)}
+                trackColor={{ false: "#e2e8f0", true: "#10b981" }}
+                thumbColor="#ffffff"
+                ios_backgroundColor="#e2e8f0"
+              />
+            </View>
+
+            {/* Botones de acción */}
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.saveButton]}
+                onPress={saveKid}
+                disabled={loading}
+                activeOpacity={0.8}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <>
+                    <Ionicons 
+                      name={isEditing ? "checkmark" : "add"} 
+                      size={20} 
+                      color="#ffffff" 
+                      style={styles.buttonIcon}
+                    />
+                    <Text style={styles.buttonText}>
+                      {isEditing ? "Guardar Cambios" : "Registrar Niño"}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              {isEditing && (
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.cancelButton]}
+                  onPress={clearForm}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="close" size={20} color="#64748b" style={styles.buttonIcon} />
+                  <Text style={[styles.buttonText, styles.cancelButtonText]}>Cancelar</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
         </View>
-
-        {/* Campo de fecha de nacimiento */}
-        <View style={styles.inputContainer}>
-          <Icon name="cake" size={24} color="#666" style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Fecha de nacimiento (dd/mm/aaaa)"
-            value={birthDay}
-            onChangeText={handleDateChange}
-            keyboardType="numeric"
-            maxLength={10}
-          />
-        </View>
-        <View style={styles.inputContainer}>
-  <Icon name="notes" size={24} color="#666" style={styles.icon} />
-  <TextInput
-    style={[styles.input, { height: 80 }]}
-    placeholder="Comentarios (opcional)"
-    value={comments}
-    onChangeText={setComments}
-    multiline
-  />
-</View>
-        
-
-        {/* Selector de clases */}
-        <TouchableOpacity
-          style={styles.classPickerButton}
-          onPress={() => setShowClassPicker(true)}
-        >
-          <Icon name="class" size={24} color="#666" style={styles.icon} />
-          <Text style={styles.classPickerText}>
-            {selectedClasses.length > 0
-              ? selectedClasses.join(", ")
-              : "Selecciona una o más clases"}
-          </Text>
-        </TouchableOpacity>
-         {/* Switch para "¿Es nuevo?" */}
-         <View style={styles.switchContainer}>
-          <Text>¿Es nuevo?</Text>
-          <Switch
-            value={isNew} // El valor del Switch está vinculado al estado isNew
-            onValueChange={(value) => setIsNew(value)} // Actualiza el estado isNew cuando el usuario cambia el Switch
-            trackColor={{ false: "#767577", true: "#81b0ff" }}
-            thumbColor={isNew ? "#f5dd4b" : "#f4f3f4"}
-          />
-        </View>
-
-        {/* Botón de registro o actualización */}
-        <TouchableOpacity
-          style={styles.registerButton}
-          onPress={saveKid}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator size="small" color="#FFF" />
-          ) : (
-            <Text style={styles.registerButtonText}>
-              {isEditing ? "Guardar Cambios" : "Registrar Niño"}
-            </Text>
-          )}
-        </TouchableOpacity>
 
         {/* Botón para cargar niños */}
         {!dataLoaded && (
-          <TouchableOpacity
-            style={styles.loadButton}
-            onPress={fetchKids}
-            disabled={loadingKids}
-          >
-            {loadingKids ? (
-              <ActivityIndicator size="small" color="#FFF" />
-            ) : (
-              <Text style={styles.loadButtonText}>Cargar Niños</Text>
-            )}
-          </TouchableOpacity>
+          <View style={styles.loadSection}>
+            <TouchableOpacity
+              style={styles.loadButton}
+              onPress={fetchKids}
+              disabled={loadingKids}
+              activeOpacity={0.8}
+            >
+              {loadingKids ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <>
+                  <Ionicons name="download" size={20} color="#ffffff" style={styles.buttonIcon} />
+                  <Text style={styles.buttonText}>Cargar Niños Registrados</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
         )}
 
-        {/* Campos de búsqueda (solo se muestran después de cargar los niños) */}
+        {/* Filtros de búsqueda */}
         {showFilters && (
-          <View style={styles.searchContainer}>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Buscar por nombre"
-              value={searchName}
-              onChangeText={setSearchName}
-            />
-            <TouchableOpacity
-              style={styles.classPickerButton}
-              onPress={() => setShowFilterClassPicker(true)}
-            >
-              <Icon name="class" size={24} color="#666" style={styles.icon} />
-              <Text style={styles.classPickerText}>
-                {searchClass || "Buscar por clase"}
-              </Text>
-            </TouchableOpacity>
+          <View style={styles.filtersSection}>
+            <Text style={styles.sectionTitle}>🔍 Buscar niños</Text>
+            
+            <View style={styles.filtersCard}>
+              <View style={styles.inputContainer}>
+                <View style={styles.inputIcon}>
+                  <Ionicons name="search" size={20} color="#6366f1" />
+                </View>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Buscar por nombre..."
+                  value={searchName}
+                  onChangeText={setSearchName}
+                  placeholderTextColor="#94a3b8"
+                />
+                {searchName.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchName('')}>
+                    <Ionicons name="close-circle" size={20} color="#94a3b8" />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <TouchableOpacity
+                style={styles.classPickerContainer}
+                onPress={() => setShowFilterClassPicker(true)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.inputIcon}>
+                  <Ionicons name="filter" size={20} color="#6366f1" />
+                </View>
+                <Text style={[
+                  styles.classPickerText,
+                  !searchClass && styles.classPickerPlaceholder
+                ]}>
+                  {searchClass || "Filtrar por clase"}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color="#94a3b8" />
+              </TouchableOpacity>
+
+              {(searchName || searchClass) && (
+                <TouchableOpacity
+                  style={styles.clearFiltersButton}
+                  onPress={() => {
+                    setSearchName('');
+                    setSearchClass('');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="refresh" size={16} color="#64748b" style={styles.buttonIcon} />
+                  <Text style={styles.clearFiltersText}>Limpiar filtros</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         )}
 
         {/* Lista de niños registrados */}
         {dataLoaded && (
-          <>
-            <Text style={styles.listHeader}>Niños Registrados</Text>
-            <FlatList
-              data={filteredKids}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <View style={styles.kidItem}>
-                  <Text style={styles.kidName}>{item.name}</Text>
-                  <Text style={styles.kidDetails}>Fecha de nacimiento: {item.birthDay}</Text>
-                  <Text style={styles.kidDetails}>Clases: {item.classes.join(", ")}</Text>
-                  {item.isNew && <Text style={styles.isNew}>Es nuevo</Text>}
-                  {item.comments ? (
-                    <Text style={styles.kidDetails}>📝 Comentarios: {item.comments}</Text>
-                  ) : null}
-                  <View style={styles.actionsContainer}>
-                    <TouchableOpacity
-                      style={styles.actionButton}
-                      onPress={() => editKid(item)}
-                    >
-                      <Icon name="edit" size={20} color="#4CAF50" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.actionButton}
-                      onPress={() => confirmDeleteKid(item.id)}
-                    >
-                      <Icon name="delete" size={20} color="#FF5722" />
-                    </TouchableOpacity>
+          <View style={styles.listSection}>
+            <Text style={styles.sectionTitle}>
+              👶 Niños registrados ({filteredKids.length})
+            </Text>
+            
+            {filteredKids.length > 0 ? (
+              <FlatList
+                data={filteredKids}
+                keyExtractor={(item) => item.id}
+                scrollEnabled={false}
+                showsVerticalScrollIndicator={false}
+                renderItem={({ item, index }) => (
+                  <View style={[
+                    styles.kidCard,
+                    index === filteredKids.length - 1 && styles.lastKidCard
+                  ]}>
+                    <View style={styles.kidHeader}>
+                      <View style={styles.kidAvatar}>
+                        <Text style={styles.kidInitial}>
+                          {item.name.charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={styles.kidInfo}>
+                        <View style={styles.kidNameContainer}>
+                          <Text style={styles.kidName}>{item.name}</Text>
+                          {item.isNew && (
+                            <View style={styles.newBadge}>
+                              <Ionicons name="star" size={12} color="#ffffff" />
+                              <Text style={styles.newBadgeText}>Nuevo</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={styles.kidDetail}>
+                          📅 {item.birthDay}
+                        </Text>
+                        <Text style={styles.kidDetail}>
+                          🏫 {item.classes.join(", ")}
+                        </Text>
+                        {item.comments && (
+                          <Text style={styles.kidComment}>
+                            💬 {item.comments}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                    
+                    <View style={styles.kidActions}>
+                      <TouchableOpacity
+                        style={[styles.kidActionButton, styles.editActionButton]}
+                        onPress={() => editKid(item)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="pencil" size={16} color="#10b981" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.kidActionButton, styles.deleteActionButton]}
+                        onPress={() => confirmDeleteKid(item.id)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="trash" size={16} color="#ef4444" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                </View>
-              )}
-            />
-          </>
+                )}
+              />
+            ) : (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateIcon}>🔍</Text>
+                <Text style={styles.emptyStateText}>
+                  {searchName || searchClass ? "No se encontraron niños" : "No hay niños registrados"}
+                </Text>
+                <Text style={styles.emptyStateSubtext}>
+                  {searchName || searchClass 
+                    ? "Intenta con otros términos de búsqueda" 
+                    : "Agrega el primer niño usando el formulario"}
+                </Text>
+              </View>
+            )}
+          </View>
         )}
       </ScrollView>
 
@@ -422,32 +622,45 @@ export default function RegisterKid({ navigation }) {
         <TouchableWithoutFeedback onPress={() => setShowClassPicker(false)}>
           <View style={styles.modalOverlay} />
         </TouchableWithoutFeedback>
+        
         <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Selecciona una o más Clases</Text>
-          <ScrollView>
-            {classes.map((classItem) => (
-              <TouchableOpacity
-                key={classItem.id}
-                style={styles.classItem}
-                onPress={() => {
-                  toggleClassSelection(classItem); // Seleccionar clase para registro
-                  setShowClassPicker(false);
-                }}
-              >
-                <Text style={styles.classItemText}>{classItem.name}</Text>
-                {selectedClasses.includes(classItem.name) && (
-                  <Icon name="check" size={20} color="#4CAF50" />
-                )}
-              </TouchableOpacity>
-            ))}
+          <View style={styles.modalHeader}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Selecciona Clases</Text>
+            <Text style={styles.modalSubtitle}>
+              Elige una o más clases para el niño
+            </Text>
+          </View>
+
+          <ScrollView style={styles.modalScrollView}>
+            <View style={styles.classesListContainer}>
+              {classes.map((classItem, index) => (
+                <TouchableOpacity
+                  key={classItem.id}
+                  style={[
+                    styles.classModalItem,
+                    index === classes.length - 1 && styles.lastClassModalItem
+                  ]}
+                  onPress={() => toggleClassSelection(classItem)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.classModalContent}>
+                    <View style={styles.classModalIcon}>
+                      <Ionicons name="library" size={20} color="#6366f1" />
+                    </View>
+                    <Text style={styles.classModalText}>{classItem.name}</Text>
+                  </View>
+                  {selectedClasses.includes(classItem.name) && (
+                    <Ionicons name="checkmark-circle" size={24} color="#10b981" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
           </ScrollView>
         </View>
       </Modal>
-      {/* Campo de comentarios */}
 
-
-
-      {/* Modal para seleccionar clases en el filtro */}
+      {/* Modal para filtrar por clase */}
       <Modal
         visible={showFilterClassPicker}
         transparent={true}
@@ -457,27 +670,67 @@ export default function RegisterKid({ navigation }) {
         <TouchableWithoutFeedback onPress={() => setShowFilterClassPicker(false)}>
           <View style={styles.modalOverlay} />
         </TouchableWithoutFeedback>
+        
         <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Selecciona una Clase para Filtrar</Text>
-          <ScrollView>
-            {classes.map((classItem) => (
+          <View style={styles.modalHeader}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Filtrar por Clase</Text>
+            <Text style={styles.modalSubtitle}>
+              Selecciona una clase para filtrar
+            </Text>
+          </View>
+
+          <ScrollView style={styles.modalScrollView}>
+            <View style={styles.classesListContainer}>
               <TouchableOpacity
-                key={classItem.id}
-                style={styles.classItem}
+                style={styles.classModalItem}
                 onPress={() => {
-                  setSearchClass(classItem.name); // Seleccionar clase para filtrar
+                  setSearchClass('');
                   setShowFilterClassPicker(false);
                 }}
+                activeOpacity={0.7}
               >
-                <Text style={styles.classItemText}>{classItem.name}</Text>
-                {searchClass === classItem.name && (
-                  <Icon name="check" size={20} color="#4CAF50" />
+                <View style={styles.classModalContent}>
+                  <View style={styles.classModalIcon}>
+                    <Ionicons name="refresh" size={20} color="#64748b" />
+                  </View>
+                  <Text style={styles.classModalText}>Todas las clases</Text>
+                </View>
+                {!searchClass && (
+                  <Ionicons name="checkmark-circle" size={24} color="#10b981" />
                 )}
               </TouchableOpacity>
-            ))}
+
+              {classes.map((classItem, index) => (
+                <TouchableOpacity
+                  key={classItem.id}
+                  style={[
+                    styles.classModalItem,
+                    index === classes.length - 1 && styles.lastClassModalItem
+                  ]}
+                  onPress={() => {
+                    setSearchClass(classItem.name);
+                    setShowFilterClassPicker(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.classModalContent}>
+                    <View style={styles.classModalIcon}>
+                      <Ionicons name="library" size={20} color="#6366f1" />
+                    </View>
+                    <Text style={styles.classModalText}>{classItem.name}</Text>
+                  </View>
+                  {searchClass === classItem.name && (
+                    <Ionicons name="checkmark-circle" size={24} color="#10b981" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
           </ScrollView>
         </View>
       </Modal>
+
+      {/* Modal de aviso para nueva opción */}
       <Modal
         visible={showNewOptionNotice}
         transparent={true}
@@ -485,243 +738,515 @@ export default function RegisterKid({ navigation }) {
         onRequestClose={() => setShowNewOptionNotice(false)}
       >
         <TouchableWithoutFeedback onPress={() => setShowNewOptionNotice(false)}>
-          <View style={styles.modalOverlayAviso}>
-            <View style={styles.modalContentAviso}>
-              <Text style={styles.modalTitleAviso}>¡Nueva Opción!</Text>
-              <Text style={styles.modalText}>
-                Ahora puedes marcar a las personas como "nuevos" usando la opción "¿Es nuevo?".
+          <View style={styles.noticeModalOverlay}>
+            <View style={styles.noticeModalContent}>
+              <View style={styles.noticeIcon}>
+                <Ionicons name="star" size={32} color="#f59e0b" />
+              </View>
+              <Text style={styles.noticeTitle}>¡Nueva Función!</Text>
+              <Text style={styles.noticeText}>
+                Ahora puedes marcar a los niños como "nuevos" usando la opción "¿Es nuevo?".
               </Text>
-              <Button
-                title="Entendido"
+              <TouchableOpacity
+                style={styles.noticeButton}
                 onPress={() => {
-                  AsyncStorage.setItem("newOptionNoticeShownKids", "true"); // Marcar que el aviso fue mostrado
+                  AsyncStorage.setItem("newOptionNoticeShownKids", "true");
                   setShowNewOptionNotice(false);
                 }}
-              />
+                activeOpacity={0.8}
+              >
+                <Text style={styles.noticeButtonText}>Entendido</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </TouchableWithoutFeedback>
-      </Modal>;
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
 
-// Estilos
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: '#f8fafc',
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+  },
+  logoContainer: {
+    marginBottom: 24,
+  },
+  logo: { 
+    width: 80, 
+    height: 80,
+  },
+  loaderText: {
+    fontSize: 16,
+    color: "#64748b",
+    marginBottom: 16,
+  },
+  headerContainer: {
+    backgroundColor: '#6366f1',
+    paddingTop: 60,
+    paddingBottom: 30,
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  header: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#c7d2fe',
+    opacity: 0.9,
   },
   scrollContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 32,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#ffffff',
+    marginHorizontal: 24,
+    marginTop: 24,
+    borderRadius: 16,
     padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFF",
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    marginBottom: 15,
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  icon: {
-    marginRight: 10,
+  statCard: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#6366f1',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#64748b',
+    textAlign: 'center',
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: '#e2e8f0',
+    marginHorizontal: 16,
+  },
+  formSection: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1e293b',
+    marginBottom: 16,
+  },
+  formCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
+    backgroundColor: '#f8fafc',
+  },
+  textAreaContainer: {
+    alignItems: 'flex-start',
+  },
+  inputIcon: {
+    marginRight: 12,
   },
   input: {
     flex: 1,
-    height: 50,
     fontSize: 16,
-    color: "#333",
+    color: '#1e293b',
   },
-  classPickerButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFF",
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 15,
-    marginBottom: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
+  textArea: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+    paddingTop: 8,
+  },
+  classPickerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
+    backgroundColor: '#f8fafc',
+  },
+  classPickerContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   classPickerText: {
-    flex: 1,
     fontSize: 16,
-    color: "#333",
+    color: '#1e293b',
+    flex: 1,
   },
-  registerButton: {
-    backgroundColor: "#6a11cb",
-    padding: 15,
-    borderRadius: 10,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
+  classPickerPlaceholder: {
+    color: '#94a3b8',
   },
-  registerButtonText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#FFF",
+  classesBadgeContainer: {
+    marginLeft: 8,
   },
-  loadButton: {
-    backgroundColor: "#4CAF50",
-    padding: 15,
-    borderRadius: 10,
-    alignItems: "center",
-    marginTop: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
+  classesBadge: {
+    backgroundColor: '#6366f1',
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
-  loadButtonText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#FFF",
-  },
-  searchContainer: {
+  switchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
     marginBottom: 20,
   },
-  searchInput: {
-    backgroundColor: "#FFF",
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
+  switchLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  switchIcon: {
+    marginRight: 8,
   },
-  modalContent: {
-    backgroundColor: "#FFF",
-    padding: 20,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    marginTop: "auto",
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 16,
-    textAlign: "center",
-  },
-  classItem: {
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#EEE",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  classItemText: {
+  switchLabel: {
     fontSize: 16,
-    color: "#333",
+    color: '#1e293b',
+    fontWeight: '500',
   },
-  listHeader: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#333",
-    marginTop: 20,
-    marginBottom: 10,
+  buttonContainer: {
+    gap: 12,
   },
-  kidItem: {
-    backgroundColor: "#FFF",
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 10,
-    shadowColor: "#000",
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    minHeight: 56,
+  },
+  saveButton: {
+    backgroundColor: '#6366f1',
+  },
+  cancelButton: {
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  buttonIcon: {
+    marginRight: 8,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  cancelButtonText: {
+    color: '#64748b',
+  },
+  loadSection: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+  },
+  loadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#10b981',
+    paddingVertical: 16,
+    borderRadius: 12,
+    minHeight: 56,
+  },
+  filtersSection: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+  },
+  filtersCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  clearFiltersButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  clearFiltersText: {
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  listSection: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+  },
+  kidCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  lastKidCard: {
+    marginBottom: 0,
+  },
+  kidHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  kidAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#6366f1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  kidInitial: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  kidInfo: {
+    flex: 1,
+  },
+  kidNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   kidName: {
     fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
+    fontWeight: 'bold',
+    color: '#1e293b',
+    marginRight: 8,
   },
-  isNew: {
+  newBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f59e0b',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  newBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginLeft: 2,
+  },
+  kidDetail: {
+    fontSize: 14,
+    color: '#64748b',
+    marginBottom: 2,
+  },
+  kidComment: {
+    fontSize: 14,
+    color: '#64748b',
+    fontStyle: 'italic',
+    marginTop: 4,
+  },
+  kidActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+  kidActionButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editActionButton: {
+    backgroundColor: '#dcfce7',
+  },
+  deleteActionButton: {
+    backgroundColor: '#fee2e2',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  emptyStateIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  emptyStateText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#64748b',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: '#94a3b8',
+    textAlign: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    padding: 24,
+    paddingBottom: 16,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#e2e8f0',
+    borderRadius: 2,
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1e293b',
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  modalScrollView: {
+    maxHeight: 400,
+  },
+  classesListContainer: {
+    padding: 24,
+    paddingTop: 16,
+  },
+  classModalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  lastClassModalItem: {
+    borderBottomWidth: 0,
+  },
+  classModalContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  classModalIcon: {
+    marginRight: 12,
+  },
+  classModalText: {
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#008f39",
+    color: '#1e293b',
+    flex: 1,
   },
-  kidDetails: {
+  noticeModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  noticeModalContent: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 32,
+    alignItems: 'center',
+    maxWidth: 320,
+    width: '100%',
+  },
+  noticeIcon: {
+    marginBottom: 16,
+  },
+  noticeTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1e293b',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  noticeText: {
     fontSize: 16,
-    color: "#666",
-    marginTop: 5,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 24,
   },
-  actionsContainer: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: 10,
+  noticeButton: {
+    backgroundColor: '#6366f1',
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 12,
   },
-  actionButton: {
-    marginLeft: 10,
+  noticeButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
   },
-
-    switchContainer: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      backgroundColor: "#FFF",
-      borderRadius: 10,
-      paddingHorizontal: 15,
-      paddingVertical: 15,
-      marginBottom: 20,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 6,
-      elevation: 3,
-      height : 50,
-    },
-    modalOverlayAviso: {
-      flex: 1,
-      justifyContent: "center",
-      alignItems: "center",
-      backgroundColor: "rgba(0, 0, 0, 0.5)",
-    },
-    modalContentAviso: {
-      backgroundColor: "#FFF",
-      borderRadius: 10,
-      padding: 20,
-      width: "80%",
-      alignItems: "center",
-    },
-    modalTitleAviso: {
-      fontSize: 20,
-      fontWeight: "bold",
-      marginBottom: 10,
-      color: "#333",
-    },
-    modalText: {
-      fontSize: 16,
-      textAlign: "center",
-      marginBottom: 20,
-      color: "#666",
-    },
-
 });
