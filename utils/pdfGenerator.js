@@ -724,3 +724,387 @@ const generateDailyHTMLContent = (reportData) => {
     </html>
   `;
 };
+
+// Función principal para generar el reporte de cumpleañeros
+export const generateBirthdayReportPDF = async () => {
+  try {
+    if (!RNHTMLtoPDF || !RNHTMLtoPDF.convert) {
+      throw new Error('RNHTMLtoPDF no está disponible.');
+    }
+
+    // Obtener datos de cumpleañeros
+    const birthdayData = await fetchBirthdayData();
+    console.log(birthdayData)
+    
+    if (birthdayData.totalBirthdays === 0) {
+      Alert.alert('Sin cumpleañeros', 'No hay cumpleañeros este mes.');
+      return;
+    }
+
+    const htmlContent = generateBirthdayHTMLContent(birthdayData);
+    const currentMonth = new Date().toLocaleDateString('es-ES', { month: 'long' });
+    const currentYear = new Date().getFullYear();
+    const fileName = `Cumpleañeros_${currentMonth}_${currentYear}`;
+    
+    const options = {
+      html: htmlContent,
+      fileName: fileName,
+      directory: Platform.OS === 'ios' ? 'Documents' : 'Downloads',
+      width: 595,
+      height: 842,
+      padding: 20,
+      base64: true,
+    }; 
+    
+
+    const file = await RNHTMLtoPDF.convert(options);
+    
+    if (file && (file.filePath || file.base64)) {
+      const pdfFileName = `${fileName}.pdf`;
+      const uri = FileSystem.documentDirectory + pdfFileName;
+      
+      if (file.base64) {
+        await FileSystem.writeAsStringAsync(uri, file.base64, { 
+          encoding: FileSystem.EncodingType.Base64 
+        });
+      } else {
+        const fileContent = await FileSystem.readAsStringAsync(file.filePath, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        await FileSystem.writeAsStringAsync(uri, fileContent, { 
+          encoding: FileSystem.EncodingType.Base64 
+        });
+      }
+      
+      await Sharing.shareAsync(uri, {
+        mimeType: 'application/pdf',
+        dialogTitle: `Cumpleañeros de ${currentMonth} ${currentYear}`,
+      });
+      
+      Alert.alert('Éxito', 'Reporte de cumpleañeros exportado correctamente');
+      return uri;
+    }
+  } catch (error) {
+    console.error('Error generando PDF de cumpleañeros:', error);
+    Alert.alert('Error', 'No se pudo generar el reporte de cumpleañeros');
+    throw error;
+  }
+};
+
+// Función para obtener datos de cumpleañeros desde Firebase
+const fetchBirthdayData = async () => {
+  try {
+    const currentMonth = new Date().getMonth() + 1; // getMonth() devuelve 0-11, necesitamos 1-12
+    
+    // Obtener datos de adultos
+    const peopleRef = collection(db, 'people');
+    const peopleSnapshot = await getDocs(peopleRef);
+    const adults = [];
+    
+    peopleSnapshot.forEach((doc) => {
+      const person = doc.data();
+      if (person.birthDay && isBirthdayThisMonth(person.birthDay, currentMonth)) {
+        adults.push({
+          name: person.name || 'Nombre no disponible',
+          birthDay: person.birthDay,
+          age: calculateAge(person.birthDay),
+          type: 'adult'
+        });
+      }
+    });
+
+    // Obtener datos de niños
+    const kidsRef = collection(db, 'kids');
+    const kidsSnapshot = await getDocs(kidsRef);
+    const kids = [];
+    
+    kidsSnapshot.forEach((doc) => {
+      const kid = doc.data();
+      if (kid.birthDay && isBirthdayThisMonth(kid.birthDay, currentMonth)) {
+        kids.push({
+          name: kid.name || 'Nombre no disponible',
+          birthDay: kid.birthDay,
+          age: calculateAge(kid.birthDay),
+          type: 'kid'
+        });
+      }
+    });
+
+    // Combinar y ordenar por fecha de cumpleaños
+    const allBirthdays = [...adults, ...kids].sort((a, b) => {
+      const dayA = parseInt(a.birthDay.split('/')[0]);
+      const dayB = parseInt(b.birthDay.split('/')[0]);
+      return dayA - dayB;
+    });
+
+    return {
+      adults,
+      kids,
+      allBirthdays,
+      totalBirthdays: allBirthdays.length,
+      totalAdults: adults.length,
+      totalKids: kids.length,
+      currentMonth: new Date().toLocaleDateString('es-ES', { month: 'long' }),
+      currentYear: new Date().getFullYear()
+    };
+  } catch (error) {
+    console.error('Error fetching birthday data:', error);
+    throw error;
+  }
+};
+
+// Función para verificar si un cumpleaños es este mes
+const isBirthdayThisMonth = (birthDayString, currentMonth) => {
+  try {
+    // Formato esperado: DD/MM/YYYY
+    const [day, month, year] = birthDayString.split('/').map(Number);
+    return month === currentMonth;
+  } catch (error) {
+    console.error('Error parsing birthday:', birthDayString, error);
+    return false;
+  }
+};
+
+// Función para calcular la edad
+const calculateAge = (birthDayString) => {
+  try {
+    const [day, month, year] = birthDayString.split('/').map(Number);
+    const birthDate = new Date(year, month - 1, day);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    return age;
+  } catch (error) {
+    console.error('Error calculating age:', error);
+    return 'N/A';
+  }
+};
+
+// Función para generar el contenido HTML del reporte
+const generateBirthdayHTMLContent = (birthdayData) => {
+  const { 
+    allBirthdays, 
+    totalBirthdays, 
+    totalAdults, 
+    totalKids, 
+    currentMonth, 
+    currentYear 
+  } = birthdayData;
+
+  const birthdayRows = allBirthdays.map(person => {
+    const ageText = person.age !== 'N/A' ? `${person.age} años` : 'Edad no disponible';
+    const typeIcon = person.type === 'kid' ? '👶' : '👤';
+    const typeText = person.type === 'kid' ? 'Niño/a' : 'Adulto';
+    
+    return `
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">
+          ${typeIcon} ${person.name}
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: center;">
+          ${person.birthDay}
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: center;">
+          ${ageText}
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: center;">
+          ${typeText}
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body { 
+          font-family: Arial, sans-serif; 
+          margin: 0; 
+          padding: 20px; 
+          background-color: #ffffff;
+        }
+        .header { 
+          text-align: center; 
+          border-bottom: 3px solid #6366f1; 
+          padding-bottom: 20px; 
+          margin-bottom: 30px; 
+        }
+        .header h1 { 
+          color: #6366f1; 
+          margin: 0; 
+          font-size: 28px; 
+        }
+        .month-info { 
+          background: linear-gradient(135deg, #6366f1, #8b5cf6);
+          color: white;
+          padding: 20px; 
+          border-radius: 12px; 
+          margin-bottom: 25px; 
+          text-align: center; 
+        }
+        .month-info h2 {
+          margin: 0;
+          font-size: 24px;
+          text-transform: capitalize;
+        }
+        .stats-grid { 
+          display: flex; 
+          justify-content: space-around; 
+          margin: 30px 0; 
+        }
+        .stat-card { 
+          text-align: center; 
+          background: #f8fafc; 
+          padding: 20px; 
+          border-radius: 12px; 
+          min-width: 120px;
+          border: 2px solid #e2e8f0;
+        }
+        .stat-number { 
+          font-size: 32px; 
+          font-weight: bold; 
+          color: #6366f1; 
+        }
+        .stat-label { 
+          color: #64748b; 
+          font-size: 14px; 
+          margin-top: 5px; 
+        }
+        .birthday-table { 
+          width: 100%; 
+          border-collapse: collapse; 
+          margin: 30px 0;
+          background: white;
+          border-radius: 8px;
+          overflow: hidden;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .birthday-table th { 
+          background: #6366f1; 
+          color: white; 
+          padding: 15px; 
+          text-align: left; 
+          font-weight: bold;
+        }
+        .birthday-table td { 
+          padding: 12px; 
+          border-bottom: 1px solid #e2e8f0; 
+        }
+        .birthday-table tr:hover { 
+          background-color: #f8fafc; 
+        }
+        .section-title {
+          font-size: 20px;
+          font-weight: bold;
+          color: #334155;
+          margin: 30px 0 15px 0;
+          border-left: 4px solid #6366f1;
+          padding-left: 15px;
+        }
+        .empty-state {
+          text-align: center;
+          padding: 40px;
+          color: #64748b;
+          background: #f8fafc;
+          border-radius: 8px;
+          margin: 20px 0;
+        }
+        .empty-state-icon {
+          font-size: 48px;
+          margin-bottom: 15px;
+        }
+        .footer { 
+          margin-top: 40px; 
+          text-align: center; 
+          color: #64748b; 
+          font-size: 12px; 
+          border-top: 2px solid #e2e8f0; 
+          padding-top: 20px; 
+        }
+        .celebration-banner {
+          background: linear-gradient(45deg, #fbbf24, #f59e0b);
+          color: white;
+          padding: 15px;
+          border-radius: 8px;
+          text-align: center;
+          margin: 20px 0;
+          font-weight: bold;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>🎂 Cumpleañeros del Mes</h1>
+      </div>
+      
+      <div class="month-info">
+        <h2>🗓️ ${currentMonth} ${currentYear}</h2>
+        <p style="margin: 10px 0 0 0; opacity: 0.9;">
+          ${totalBirthdays} ${totalBirthdays === 1 ? 'persona celebra' : 'personas celebran'} su cumpleaños este mes
+        </p>
+      </div>
+      
+      ${totalBirthdays > 0 ? `
+        <div class="celebration-banner">
+          🎉 ¡Celebremos juntos estos cumpleaños especiales! 🎉
+        </div>
+        
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-number">${totalBirthdays}</div>
+            <div class="stat-label">🎂 Total</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">${totalAdults}</div>
+            <div class="stat-label">👤 Adultos</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">${totalKids}</div>
+            <div class="stat-label">👶 Niños</div>
+          </div>
+        </div>
+        
+        <div class="section-title">📋 Lista de Cumpleañeros</div>
+        
+        <table class="birthday-table">
+          <thead>
+            <tr>
+              <th>👤 Nombre</th>
+              <th>📅 Fecha de Nacimiento</th>
+              <th>🎂 Edad</th>
+              <th>👥 Categoría</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${birthdayRows}
+          </tbody>
+        </table>
+      ` : `
+        <div class="empty-state">
+          <div class="empty-state-icon">🎂</div>
+          <h3>No hay cumpleañeros este mes</h3>
+          <p>¡Pero siempre hay motivos para celebrar!</p>
+        </div>
+      `}
+      
+      <div class="footer">
+        <p>🎉 Reporte de cumpleañeros generado automáticamente</p>
+        <p>Fecha de generación: ${new Date().toLocaleDateString('es-ES', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        })}</p>
+      </div>
+    </body>
+    </html>
+  `;
+};

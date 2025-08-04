@@ -11,6 +11,8 @@ import {
 } from "react-native";
 import { BarChart, LineChart } from "react-native-chart-kit";
 import { Ionicons } from "@expo/vector-icons";
+import { generateBirthdayReportPDF } from '../utils/pdfGenerator'; // Ajusta la ruta según tu estructura
+
 import {
   collection,
   getDocs,
@@ -36,6 +38,7 @@ const Dashboard = () => {
   const [top3Attendees, setTop3Attendees] = useState([]);
   const [monthlyAttendance, setMonthlyAttendance] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [generatingReport, setGeneratingReport] = useState(false);
   
   const monthNames = [
     "ene", "feb", "mar", "abr", "may", "jun",
@@ -44,6 +47,16 @@ const Dashboard = () => {
   
   const rotation = useSharedValue(0);
 
+  const handleBirthdayReport = async () => {
+  try {
+    setGeneratingReport(true);
+    await generateBirthdayReportPDF();
+  } catch (error) {
+    console.error('Error generating birthday report:', error);
+  } finally {
+    setGeneratingReport(false);
+  }
+};
   // ✅ FUNCIÓN AGREGADA: Parsear fecha de forma segura
   const parseDateString = (dateString) => {
     const [year, month, day] = dateString.split('-').map(Number);
@@ -360,10 +373,23 @@ const Dashboard = () => {
             <Text style={styles.actionSubtitle}>Ver más detalles</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.actionCard}>
-            <Text style={styles.actionIcon}>👥</Text>
-            <Text style={styles.actionTitle}>Personas</Text>
-            <Text style={styles.actionSubtitle}>Gestionar registros</Text>
+          <TouchableOpacity 
+            style={[styles.actionCard, generatingReport && styles.actionCardDisabled]} 
+            onPress={handleBirthdayReport}
+            disabled={generatingReport}
+          >
+            <Text style={styles.actionIcon}>
+              {generatingReport ? '⏳' : '🎂'}
+            </Text>
+            <Text style={styles.actionTitle}>
+              {generatingReport ? 'Generando...' : 'Cumpleaños'}
+            </Text>
+            <Text style={styles.actionSubtitle}>
+              {generatingReport 
+                ? 'Creando reporte PDF...' 
+                : 'Presiona para obtener los cumpleañeros del mes'
+              }
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -641,6 +667,9 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 14,
     color: '#94a3b8',
+  },
+  actionCardDisabled: {
+    opacity: 0.6,
   },
 });
 
