@@ -1,6 +1,6 @@
 // utils/pdfGenerator.js
 import RNHTMLtoPDF from 'react-native-html-to-pdf';
-import { Alert, Platform, Share } from 'react-native';
+import { Alert, Platform, Share, Linking } from 'react-native';
 
 export const generateMonthlyReportPDF = async (monthlyReport, selectedClass, selectedMonth, currentYear) => {
   try {
@@ -12,13 +12,16 @@ export const generateMonthlyReportPDF = async (monthlyReport, selectedClass, sel
     const htmlContent = generateHTMLContent(monthlyReport, selectedClass, selectedMonth, currentYear);
     console.log('Año actual:', currentYear);
     
+    const fileName = `Reporte_${selectedClass}_${selectedMonth}_${currentYear}`;
+    
     const options = {
       html: htmlContent,
-      fileName: `Reporte_${selectedClass}_${selectedMonth}_${currentYear}`,
+      fileName: fileName,
       directory: Platform.OS === 'ios' ? 'Documents' : 'Downloads',
       width: 595, // A4 width in points
       height: 842, // A4 height in points
       padding: 20,
+      base64: false, // Importante: asegurar que sea false
     };
 
     console.log('Generando PDF con opciones:', options.fileName);
@@ -27,15 +30,60 @@ export const generateMonthlyReportPDF = async (monthlyReport, selectedClass, sel
     
     if (file && file.filePath) {
       console.log('PDF generado exitosamente:', file.filePath);
+      console.log('Tamaño del archivo:', file.fileSize || 'No disponible');
       
-      // Opción 1: Mostrar menú de compartir nativo
-      await Share.share({
-        url: Platform.OS === 'ios' ? file.filePath : `file://${file.filePath}`,
-        title: `Reporte ${selectedClass} - ${selectedMonth} ${currentYear}`,
-        message: `Reporte de asistencia generado para ${selectedClass}`,
-      });
+      // Preparar la URL correcta según la plataforma
+      let fileUri;
       
-      return file.filePath;
+      if (Platform.OS === 'ios') {
+        // En iOS, usar la ruta directa
+        fileUri = file.filePath;
+      } else {
+        // En Android, asegurar el formato file://
+        fileUri = file.filePath.startsWith('file://') 
+          ? file.filePath 
+          : `file://${file.filePath}`;
+      }
+      
+      console.log('URI del archivo para compartir:', fileUri);
+      
+      // Preparar opciones de compartir
+      const shareOptions = {
+        message: `Reporte de asistencia - ${selectedClass} (${selectedMonth} ${currentYear})`,
+        url: fileUri,
+        title: `Reporte ${selectedClass}`,
+      };
+      
+      console.log('Compartiendo con opciones:', shareOptions);
+      
+      try {
+        const shareResult = await Share.share(shareOptions);
+        console.log('Resultado del compartir:', shareResult);
+        
+        if (shareResult.action === Share.dismissedAction) {
+          console.log('El usuario canceló la compartición');
+        }
+        
+        return file.filePath;
+      } catch (shareError) {
+        console.error('Error al compartir:', shareError);
+        
+        // Mostrar opción alternativa
+        Alert.alert(
+          'Error al compartir',
+          'No se pudo compartir el PDF. ¿Deseas abrir la ubicación del archivo?',
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            { 
+              text: 'Abrir ubicación', 
+              onPress: () => openFileLocation(file.filePath) 
+            }
+          ]
+        );
+        
+        return file.filePath;
+      }
+      
     } else {
       throw new Error('No se pudo generar el archivo PDF');
     }
@@ -48,10 +96,100 @@ export const generateMonthlyReportPDF = async (monthlyReport, selectedClass, sel
       errorMessage = 'La librería PDF no está configurada correctamente. Contacta al desarrollador.';
     } else if (error.message.includes('Permission')) {
       errorMessage = 'No hay permisos para guardar archivos. Verifica los permisos de la app.';
+    } else if (error.message.includes('HTML string is required')) {
+      errorMessage = 'Error en el contenido del reporte. Verifica los datos.';
     }
     
     Alert.alert('Error', errorMessage);
     throw error;
+  }
+};
+
+// Función para abrir la ubicación del archivo
+const openFileLocation = (filePath) => {
+  if (Platform.OS === 'android') {
+    // En Android, abrir la carpeta de descargas
+    Linking.openURL('content://com.android.externalstorage.documents/root/primary/Download');
+  } else {
+    // En iOS, mostrar información sobre dónde encontrar el archivo
+    Alert.alert(
+      'Archivo guardado',
+      'El PDF se guardó en la app Archivos > En Mi iPhone > Documentos',
+      [{ text: 'OK' }]
+    );
+  }
+};
+
+// Función para verificar y solicitar permisos (especialmente en Android)
+export const checkStoragePermissions = async () => {
+  if (Platform.OS === 'android') {
+    try {
+      const { PermissionsAndroid } = require('react-native');
+      
+      // Para Android 10+ (API 29+), verificar permisos de almacenamiento
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+        {
+          title: 'Permiso de almacenamiento',
+          message: 'La app necesita acceso al almacenamiento para guardar el PDF',
+          buttonNeutral: 'Preguntar después',
+          buttonNegative: 'Cancelar',
+          buttonPositive: 'OK',
+        }
+      );
+      
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    } catch (err) {
+      console.warn('Error solicitando permisos:', err);
+      return false;
+    }
+  }
+  return true; // iOS no necesita permisos explícitos para Documents
+};
+
+// Función alternativa: guardar y mostrar mensaje con ubicación
+export const generatePDFAndShowLocation = async (monthlyReport, selectedClass, selectedMonth, currentYear) => {
+  try {
+    const filePath = await generateMonthlyReportPDF(monthlyReport, selectedClass, selectedMonth, currentYear);
+    
+    // Mostrar mensaje de éxito con ubicación
+    const locationMessage = Platform.OS === 'ios' 
+      ? 'El PDF se guardó en Archivos > En Mi iPhone > Documentos'
+      : 'El PDF se guardó en la carpeta Descargas';
+    
+    Alert.alert(
+      'PDF Generado',
+      `${locationMessage}\n\nArchivo: Reporte_${selectedClass}_${selectedMonth}_${currentYear}.pdf`,
+      [
+        { text: 'OK' },
+        { 
+          text: 'Compartir', 
+          onPress: () => shareExistingPDF(filePath, selectedClass, selectedMonth, currentYear)
+        }
+      ]
+    );
+    
+    return filePath;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Función para compartir un PDF ya existente
+const shareExistingPDF = async (filePath, selectedClass, selectedMonth, currentYear) => {
+  try {
+    const fileUri = Platform.OS === 'ios' 
+      ? filePath 
+      : (filePath.startsWith('file://') ? filePath : `file://${filePath}`);
+    
+    await Share.share({
+      message: `Reporte de asistencia - ${selectedClass} (${selectedMonth} ${currentYear})`,
+      url: fileUri,
+      title: `Reporte ${selectedClass}`,
+    });
+  } catch (error) {
+    console.error('Error compartiendo PDF existente:', error);
+    Alert.alert('Error', 'No se pudo compartir el archivo');
   }
 };
 
