@@ -44,6 +44,12 @@ const Dashboard = () => {
   
   const rotation = useSharedValue(0);
 
+  // ✅ FUNCIÓN AGREGADA: Parsear fecha de forma segura
+  const parseDateString = (dateString) => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day); // month - 1 porque Date usa 0-11
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -150,9 +156,10 @@ const Dashboard = () => {
     }
   };
 
-  // Función para formatear la fecha de manera más amigable
+  // ✅ FUNCIÓN CORREGIDA: formatDate
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
+    // Usar la función segura para parsear la fecha
+    const date = parseDateString(dateString);
     const options = { 
       weekday: 'long', 
       year: 'numeric', 
@@ -166,6 +173,14 @@ const Dashboard = () => {
   const getSessionEmoji = (session) => {
     return session === 'AM' ? '🌅' : '🌆';
   };
+
+  // ✅ AGREGAR DEBUG para verificar la fecha
+  console.log('Dashboard - Última sesión:', lastSession);
+  if (lastSession) {
+    console.log('Dashboard - Fecha de última sesión (string):', lastSession.date);
+    console.log('Dashboard - Fecha parseada:', parseDateString(lastSession.date));
+    console.log('Dashboard - Fecha formateada:', formatDate(lastSession.date));
+  }
 
   if (loading) {
     return (
@@ -355,7 +370,6 @@ const Dashboard = () => {
     </ScrollView>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
