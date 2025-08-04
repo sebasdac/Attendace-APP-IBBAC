@@ -12,7 +12,7 @@ import {
   Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { db } from "../database/firebase";
+import { db } from "../../database/firebase";
 import {
   collection,
   getDocs,
@@ -68,7 +68,7 @@ export default function KidsScreen({ navigation }) {
       <View style={styles.loaderContainer}>
         <View style={styles.logoContainer}>
           <Image
-            source={require("../assets/preloader.png")}
+            source={require("../../assets/preloader.png")}
             style={styles.logo}
             resizeMode="contain"
           />

@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { db } from "../database/firebase";
+import { db } from "../../database/firebase";
 import { collection, getDocs, addDoc, query, where, updateDoc, doc, setDoc, getDoc} from "firebase/firestore";
 
 export default function KidsAttendanceScreen({ route }) {

@@ -22,6 +22,12 @@ export default function AttendanceListScreen({ route }) {
   const [searchText, setSearchText] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // ✅ FUNCIÓN CORREGIDA: Parsear fecha de forma segura
+  const parseDateString = (dateString) => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day); // month - 1 porque Date usa 0-11
+  };
+
   const updatePersonAttendanceCount = async (personId, personName, increment) => {
     try {
       const countRef = doc(db, 'attendanceCounts', personId);
@@ -158,9 +164,11 @@ export default function AttendanceListScreen({ route }) {
     }
   };
 
+  // ✅ FUNCIÓN CORREGIDA: updateMonthlySummary
   const updateMonthlySummary = async (dateStr, incremento = 1) => {
     try {
-      const dateObj = new Date(dateStr);
+      // Usar la función segura para parsear la fecha
+      const dateObj = parseDateString(dateStr);
       const year = dateObj.getFullYear().toString();
       const month = dateObj.toLocaleString('es-ES', { month: 'short' }).toLowerCase(); // ej: "ago"
 
@@ -193,9 +201,10 @@ export default function AttendanceListScreen({ route }) {
       .toLowerCase(); // Convierte a minúsculas
   };
 
-  // Función para formatear la fecha de manera más amigable
+  // ✅ FUNCIÓN CORREGIDA: formatDate
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
+    // Usar la función segura para parsear la fecha
+    const date = parseDateString(dateString);
     const options = { 
       weekday: 'long', 
       year: 'numeric', 
@@ -218,6 +227,11 @@ export default function AttendanceListScreen({ route }) {
   // Contar asistentes
   const attendedCount = Object.values(attendance).filter(Boolean).length;
   const totalPeople = filteredPeople.length;
+
+  // ✅ AGREGAR DEBUG para verificar la fecha
+  console.log('Fecha recibida (string):', date);
+  console.log('Fecha parseada:', parseDateString(date));
+  console.log('Fecha formateada:', formatDate(date));
 
   if (loading && people.length === 0) {
     return (

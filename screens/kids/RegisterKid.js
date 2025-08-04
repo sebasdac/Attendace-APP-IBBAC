@@ -18,7 +18,7 @@ import {
   Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { db } from "../database/firebase";
+import { db } from "../../database/firebase";
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc } from "firebase/firestore";
 import { Switch } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -261,7 +261,7 @@ export default function RegisterKid({ navigation }) {
       <View style={styles.loaderContainer}>
         <View style={styles.logoContainer}>
           <Image
-            source={require("../assets/preloader.png")}
+            source={require("../../assets/preloader.png")}
             style={styles.logo}
             resizeMode="contain"
           />

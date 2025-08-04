@@ -1,10 +1,10 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import KidsScreen from '../screens/KidsScreen'
-import RegisterKid from '../screens/RegisterKid';
-import KidsAttendanceScreen from '../screens/KidsAttendanceScreen';
-import SelectDateAndSessionScreen from '../screens/SelectDateAndSessionScreen';
-import MonthlyAttendanceScreen from '../screens/MonthlyAttendanceScreen';
+import KidsScreen from '../screens//kids/KidsScreen'
+import RegisterKid from '../screens/kids/RegisterKid';
+import KidsAttendanceScreen from '../screens/kids/KidsAttendanceScreen';
+import SelectDateAndSessionScreen from '../screens/kids/SelectDateAndSessionScreen';
+import MonthlyAttendanceScreen from '../screens/kids/MonthlyAttendanceScreen';
 const Stack = createStackNavigator();
 
 export default function KidsAttendanceStackNavigation() {

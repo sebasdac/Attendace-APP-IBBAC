@@ -244,7 +244,7 @@ const excelDateToJSDate = (excelDate) => {
         <Button title="Cerrar Sesión" color="red" onPress={handleLogout} />
       </View>
 
-      <Text style={infoStyle}>Version : 4.0.0v Iglesia Biblica Bautista Agua Caliente. Attendance App</Text> 
+      <Text style={infoStyle}>Version : 3.0.2v Iglesia Biblica Bautista Agua Caliente. Attendance App</Text> 
       
     </View>
   );
