@@ -22,9 +22,17 @@ export default function KidsAttendanceScreen({ route }) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // ✅ FUNCIÓN AGREGADA: Parsear fecha de forma segura
+  const parseDateString = (dateString) => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day); // month - 1 porque Date usa 0-11
+  };
+
+  // ✅ FUNCIÓN CORREGIDA: updateMonthlySummary
   const updateMonthlySummary = async (dateStr, incremento = 1) => {
     try {
-      const dateObj = new Date(dateStr);
+      // Usar la función segura para parsear la fecha
+      const dateObj = parseDateString(dateStr);
       const year = dateObj.getFullYear().toString();
       const month = dateObj.toLocaleString("es-ES", { month: "short" }).toLowerCase();
 
@@ -47,9 +55,10 @@ export default function KidsAttendanceScreen({ route }) {
     }
   };
 
-  // Función para formatear la fecha para mostrar
+  // ✅ FUNCIÓN CORREGIDA: formatDisplayDate
   const formatDisplayDate = (dateStr) => {
-    const date = new Date(dateStr);
+    // Usar la función segura para parsear la fecha
+    const date = parseDateString(dateStr);
     const options = { 
       weekday: 'long', 
       year: 'numeric', 
@@ -202,6 +211,11 @@ export default function KidsAttendanceScreen({ route }) {
   useEffect(() => {
     fetchKidsByClass();
   }, [classRoom, date, session]);
+
+  // ✅ AGREGAR DEBUG para verificar la fecha
+  console.log('KidsAttendance - Fecha recibida (string):', date);
+  console.log('KidsAttendance - Fecha parseada:', parseDateString(date));
+  console.log('KidsAttendance - Fecha formateada:', formatDisplayDate(date));
 
   // Renderizar cada estudiante
   const renderKidItem = ({ item }) => (

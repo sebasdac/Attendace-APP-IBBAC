@@ -18,17 +18,34 @@ export default function AttendanceSelectScreen() {
   const [session, setSession] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // FUNCIÓN CORREGIDA - Crear fecha sin problemas de zona horaria
   const handleDateChange = (event, date) => {
     setShowPicker(false);
   
     if (date) {
-      const localDate = new Date(date.setHours(0, 0, 0, 0));
+      // Crear una nueva fecha usando solo año, mes y día (sin horas)
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const day = date.getDate();
+      const localDate = new Date(year, month, day);
       setSelectedDate(localDate);
+      
+      // DEBUG: Agregar console.log para verificar
+      console.log('Fecha seleccionada:', localDate);
+      console.log('Fecha formateada:', formatDateForNavigation(localDate));
     }
   };
 
   const handleSessionSelect = (selectedSession) => {
     setSession(selectedSession);
+  };
+
+  // NUEVA FUNCIÓN para formatear fecha de navegación de forma segura
+  const formatDateForNavigation = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const handleSaveAttendance = () => {
@@ -39,10 +56,15 @@ export default function AttendanceSelectScreen() {
 
     setLoading(true);
 
+    // DEBUG: Verificar qué fecha se está enviando
+    const dateToSend = formatDateForNavigation(selectedDate);
+    console.log('Enviando fecha:', dateToSend);
+    console.log('Fecha original:', selectedDate);
+
     setTimeout(() => {
       setLoading(false);
       navigation.navigate('AttendanceListScreen', {
-        date: selectedDate.toISOString().split('T')[0],
+        date: dateToSend, // Usar la función segura en lugar de toISOString
         session,
       });
     }, 2000);
@@ -95,7 +117,7 @@ export default function AttendanceSelectScreen() {
                 {formatDate(selectedDate)}
               </Text>
               <Text style={styles.dateSubText}>
-                {selectedDate.toISOString().split('T')[0]}
+                {formatDateForNavigation(selectedDate)}
               </Text>
               <Text style={styles.dateActionText}>Toca para cambiar</Text>
             </View>
@@ -241,7 +263,6 @@ export default function AttendanceSelectScreen() {
     </ScrollView>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
