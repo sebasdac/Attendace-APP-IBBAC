@@ -1,6 +1,8 @@
 // utils/pdfGenerator.js
 import RNHTMLtoPDF from 'react-native-html-to-pdf';
-import { Alert, Platform, Share, Linking } from 'react-native';
+import { Alert, Platform } from 'react-native';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 export const generateMonthlyReportPDF = async (monthlyReport, selectedClass, selectedMonth, currentYear) => {
   try {
@@ -21,69 +23,46 @@ export const generateMonthlyReportPDF = async (monthlyReport, selectedClass, sel
       width: 595, // A4 width in points
       height: 842, // A4 height in points
       padding: 20,
-      base64: false, // Importante: asegurar que sea false
+      base64: true, // Cambiar a true para obtener base64
     };
 
     console.log('Generando PDF con opciones:', options.fileName);
 
     const file = await RNHTMLtoPDF.convert(options);
     
-    if (file && file.filePath) {
-      console.log('PDF generado exitosamente:', file.filePath);
-      console.log('Tamaño del archivo:', file.fileSize || 'No disponible');
+    if (file && (file.filePath || file.base64)) {
+      console.log('PDF generado exitosamente');
       
-      // Preparar la URL correcta según la plataforma
-      let fileUri;
+      // Usar la lógica de tu función de Excel
+      const pdfFileName = `${fileName}.pdf`;
+      const uri = FileSystem.documentDirectory + pdfFileName;
       
-      if (Platform.OS === 'ios') {
-        // En iOS, usar la ruta directa
-        fileUri = file.filePath;
+      if (file.base64) {
+        // Si tenemos base64, escribir directamente
+        await FileSystem.writeAsStringAsync(uri, file.base64, { 
+          encoding: FileSystem.EncodingType.Base64 
+        });
       } else {
-        // En Android, asegurar el formato file://
-        fileUri = file.filePath.startsWith('file://') 
-          ? file.filePath 
-          : `file://${file.filePath}`;
+        // Si tenemos filePath, leer el archivo y convertir a base64
+        const fileContent = await FileSystem.readAsStringAsync(file.filePath, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        await FileSystem.writeAsStringAsync(uri, fileContent, { 
+          encoding: FileSystem.EncodingType.Base64 
+        });
       }
       
-      console.log('URI del archivo para compartir:', fileUri);
+      console.log('Archivo guardado en:', uri);
       
-      // Preparar opciones de compartir
-      const shareOptions = {
-        message: `Reporte de asistencia - ${selectedClass} (${selectedMonth} ${currentYear})`,
-        url: fileUri,
-        title: `Reporte ${selectedClass}`,
-      };
+      // Usar expo-sharing para compartir (igual que tu función de Excel)
+      await Sharing.shareAsync(uri, {
+        mimeType: 'application/pdf',
+        dialogTitle: `Reporte ${selectedClass} - ${selectedMonth} ${currentYear}`,
+      });
       
-      console.log('Compartiendo con opciones:', shareOptions);
+      Alert.alert('Éxito', 'PDF generado y compartido correctamente');
       
-      try {
-        const shareResult = await Share.share(shareOptions);
-        console.log('Resultado del compartir:', shareResult);
-        
-        if (shareResult.action === Share.dismissedAction) {
-          console.log('El usuario canceló la compartición');
-        }
-        
-        return file.filePath;
-      } catch (shareError) {
-        console.error('Error al compartir:', shareError);
-        
-        // Mostrar opción alternativa
-        Alert.alert(
-          'Error al compartir',
-          'No se pudo compartir el PDF. ¿Deseas abrir la ubicación del archivo?',
-          [
-            { text: 'Cancelar', style: 'cancel' },
-            { 
-              text: 'Abrir ubicación', 
-              onPress: () => openFileLocation(file.filePath) 
-            }
-          ]
-        );
-        
-        return file.filePath;
-      }
-      
+      return uri;
     } else {
       throw new Error('No se pudo generar el archivo PDF');
     }
@@ -105,97 +84,94 @@ export const generateMonthlyReportPDF = async (monthlyReport, selectedClass, sel
   }
 };
 
-// Función para abrir la ubicación del archivo
-const openFileLocation = (filePath) => {
-  if (Platform.OS === 'android') {
-    // En Android, abrir la carpeta de descargas
-    Linking.openURL('content://com.android.externalstorage.documents/root/primary/Download');
-  } else {
-    // En iOS, mostrar información sobre dónde encontrar el archivo
-    Alert.alert(
-      'Archivo guardado',
-      'El PDF se guardó en la app Archivos > En Mi iPhone > Documentos',
-      [{ text: 'OK' }]
-    );
-  }
-};
-
-// Función para verificar y solicitar permisos (especialmente en Android)
-export const checkStoragePermissions = async () => {
-  if (Platform.OS === 'android') {
-    try {
-      const { PermissionsAndroid } = require('react-native');
-      
-      // Para Android 10+ (API 29+), verificar permisos de almacenamiento
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-        {
-          title: 'Permiso de almacenamiento',
-          message: 'La app necesita acceso al almacenamiento para guardar el PDF',
-          buttonNeutral: 'Preguntar después',
-          buttonNegative: 'Cancelar',
-          buttonPositive: 'OK',
-        }
-      );
-      
-      return granted === PermissionsAndroid.RESULTS.GRANTED;
-    } catch (err) {
-      console.warn('Error solicitando permisos:', err);
-      return false;
-    }
-  }
-  return true; // iOS no necesita permisos explícitos para Documents
-};
-
-// Función alternativa: guardar y mostrar mensaje con ubicación
+// Función alternativa: solo generar sin compartir inmediatamente
 export const generatePDFAndShowLocation = async (monthlyReport, selectedClass, selectedMonth, currentYear) => {
   try {
-    const filePath = await generateMonthlyReportPDF(monthlyReport, selectedClass, selectedMonth, currentYear);
+    const htmlContent = generateHTMLContent(monthlyReport, selectedClass, selectedMonth, currentYear);
+    const fileName = `Reporte_${selectedClass}_${selectedMonth}_${currentYear}`;
     
-    // Mostrar mensaje de éxito con ubicación
-    const locationMessage = Platform.OS === 'ios' 
-      ? 'El PDF se guardó en Archivos > En Mi iPhone > Documentos'
-      : 'El PDF se guardó en la carpeta Descargas';
+    const options = {
+      html: htmlContent,
+      fileName: fileName,
+      directory: Platform.OS === 'ios' ? 'Documents' : 'Downloads',
+      width: 595,
+      height: 842,
+      padding: 20,
+      base64: true,
+    };
+
+    const file = await RNHTMLtoPDF.convert(options);
     
-    Alert.alert(
-      'PDF Generado',
-      `${locationMessage}\n\nArchivo: Reporte_${selectedClass}_${selectedMonth}_${currentYear}.pdf`,
-      [
-        { text: 'OK' },
-        { 
-          text: 'Compartir', 
-          onPress: () => shareExistingPDF(filePath, selectedClass, selectedMonth, currentYear)
-        }
-      ]
-    );
-    
-    return filePath;
+    if (file && (file.filePath || file.base64)) {
+      const pdfFileName = `${fileName}.pdf`;
+      const uri = FileSystem.documentDirectory + pdfFileName;
+      
+      if (file.base64) {
+        await FileSystem.writeAsStringAsync(uri, file.base64, { 
+          encoding: FileSystem.EncodingType.Base64 
+        });
+      } else {
+        const fileContent = await FileSystem.readAsStringAsync(file.filePath, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        await FileSystem.writeAsStringAsync(uri, fileContent, { 
+          encoding: FileSystem.EncodingType.Base64 
+        });
+      }
+      
+      // Mostrar opciones al usuario
+      Alert.alert(
+        'PDF Generado Exitosamente',
+        `Archivo: ${pdfFileName}`,
+        [
+          { text: 'Solo Guardar', style: 'cancel' },
+          { 
+            text: 'Compartir', 
+            onPress: async () => {
+              try {
+                await Sharing.shareAsync(uri, {
+                  mimeType: 'application/pdf',
+                  dialogTitle: `Reporte ${selectedClass} - ${selectedMonth} ${currentYear}`,
+                });
+              } catch (shareError) {
+                console.error('Error compartiendo:', shareError);
+                Alert.alert('Error', 'No se pudo compartir el archivo');
+              }
+            }
+          }
+        ]
+      );
+      
+      return uri;
+    } else {
+      throw new Error('No se pudo generar el archivo PDF');
+    }
   } catch (error) {
+    console.error('Error generando PDF:', error);
+    Alert.alert('Error', 'No se pudo generar el PDF');
     throw error;
   }
 };
 
-// Función para compartir un PDF ya existente
-const shareExistingPDF = async (filePath, selectedClass, selectedMonth, currentYear) => {
-  try {
-    const fileUri = Platform.OS === 'ios' 
-      ? filePath 
-      : (filePath.startsWith('file://') ? filePath : `file://${filePath}`);
-    
-    await Share.share({
-      message: `Reporte de asistencia - ${selectedClass} (${selectedMonth} ${currentYear})`,
-      url: fileUri,
-      title: `Reporte ${selectedClass}`,
-    });
-  } catch (error) {
-    console.error('Error compartiendo PDF existente:', error);
-    Alert.alert('Error', 'No se pudo compartir el archivo');
-  }
+// Función para verificar si expo-sharing está disponible
+export const isSharingAvailable = async () => {
+  return await Sharing.isAvailableAsync();
 };
 
 // Función para verificar si la librería está disponible
 export const isPDFGenerationAvailable = () => {
   return RNHTMLtoPDF && typeof RNHTMLtoPDF.convert === 'function';
+};
+
+// Función auxiliar para convertir ArrayBuffer a Base64 (por si la necesitas)
+const arrayBufferToBase64 = (buffer) => {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 };
 
 const generateHTMLContent = (monthlyReport, selectedClass, selectedMonth, currentYear) => {
@@ -577,7 +553,7 @@ const generateHTMLContent = (monthlyReport, selectedClass, selectedMonth, curren
       
       <!-- Footer -->
       <div class="footer">
-        <p>Reporte generado automáticamente por el Sistema de Asistencia</p>
+        <p>Reporte generado automáticamente por el Sistema de Asistencia de la IBBAC</p>
         <p>© ${currentYear} - Todos los derechos reservados</p>
       </div>
     </body>
