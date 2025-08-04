@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, Dimensions, TouchableOpacity, ActivityIndicator, FlatList, StyleSheet, TextInput} from "react-native";
+import { View, Text, ScrollView, Dimensions, TouchableOpacity, ActivityIndicator, FlatList, StyleSheet, TextInput, Alert } from "react-native";
 import { BarChart } from "react-native-chart-kit";
 import { useNavigation } from "@react-navigation/native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { db } from '../database/firebase';
 import { collection, query, where, getDocs } from "firebase/firestore";
+import { generateDailyReportPDF } from '../utils/pdfGenerator'; // Importar la función PDF
 
 const AnalyticsScreen = () => {
- const [attendanceCounts, setAttendanceCounts] = useState({
-  AM: { kids: 0, adults: 0 },
-  PM: { kids: 0, adults: 0 },
-});
+  const [attendanceCounts, setAttendanceCounts] = useState({
+    AM: { kids: 0, adults: 0 },
+    PM: { kids: 0, adults: 0 },
+  });
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [people, setPeople] = useState([]);
@@ -20,55 +21,84 @@ const AnalyticsScreen = () => {
   const [search, setSearch] = useState('');
   const [loadingPeople, setLoadingPeople] = useState(false); 
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [generatingPDF, setGeneratingPDF] = useState(false); // Estado para la generación de PDF
 
   useEffect(() => {
     fetchAttendanceData();
   }, [selectedDate]);
 
   const fetchAttendanceData = async () => {
-  try {
-    let q = collection(db, "attendance");
+    try {
+      let q = collection(db, "attendance");
 
-    const localDate = new Date(selectedDate.getTime() + Math.abs(selectedDate.getTimezoneOffset() * 60000));
-    const dateString = localDate.toISOString().split("T")[0];
+      const localDate = new Date(selectedDate.getTime() + Math.abs(selectedDate.getTimezoneOffset() * 60000));
+      const dateString = localDate.toISOString().split("T")[0];
 
-    q = query(q, where("date", "==", dateString));
-    const snapshot = await getDocs(q);
+      q = query(q, where("date", "==", dateString));
+      const snapshot = await getDocs(q);
 
-    if (snapshot.empty) {
-      setAttendanceCounts({
+      if (snapshot.empty) {
+        setAttendanceCounts({
+          AM: { kids: 0, adults: 0 },
+          PM: { kids: 0, adults: 0 },
+        });
+        return;
+      }
+
+      let counts = {
         AM: { kids: 0, adults: 0 },
         PM: { kids: 0, adults: 0 },
-      });
-      return;
-    }
+      };
 
-    let counts = {
-      AM: { kids: 0, adults: 0 },
-      PM: { kids: 0, adults: 0 },
-    };
+      snapshot.forEach((doc) => {
+        const data = doc.data();
 
-    snapshot.forEach((doc) => {
-      const data = doc.data();
+        if (data.attended) {
+          const session = data.session || "AM";
 
-      if (data.attended) {
-        const session = data.session || "AM";
+          const isKid = data.kidId && data.class;
+          const isAdult = !data.kidId && !data.class;
 
-        const isKid = data.kidId && data.class;
-        const isAdult = !data.kidId && !data.class;
-
-        if (session === "AM" || session === "PM") {
-          if (isKid) counts[session].kids += 1;
-          else if (isAdult) counts[session].adults += 1;
+          if (session === "AM" || session === "PM") {
+            if (isKid) counts[session].kids += 1;
+            else if (isAdult) counts[session].adults += 1;
+          }
         }
-      }
-    });
+      });
 
-    setAttendanceCounts(counts);
-  } catch (error) {
-    console.error("Error al obtener los datos de Firestore: ", error);
-  }
-};
+      setAttendanceCounts(counts);
+    } catch (error) {
+      console.error("Error al obtener los datos de Firestore: ", error);
+    }
+  };
+
+  // Función para generar el PDF del reporte diario
+  const handleGeneratePDF = async () => {
+    if (generatingPDF) return;
+    
+    setGeneratingPDF(true);
+    
+    try {
+      const totalAM = attendanceCounts.AM.kids + attendanceCounts.AM.adults;
+      const totalPM = attendanceCounts.PM.kids + attendanceCounts.PM.adults;
+      const totalDay = totalAM + totalPM;
+      
+      const reportData = {
+        date: selectedDate,
+        attendanceCounts,
+        totalAM,
+        totalPM,
+        totalDay
+      };
+      
+      await generateDailyReportPDF(reportData);
+    } catch (error) {
+      console.error('Error generando PDF:', error);
+      Alert.alert('Error', 'No se pudo generar el reporte PDF');
+    } finally {
+      setGeneratingPDF(false);
+    }
+  };
 
   const handleViewAttendance = (personId) => {
     navigation.navigate('AttendanceReport', { personId });
@@ -93,7 +123,6 @@ const AnalyticsScreen = () => {
       setPeople(peopleList);
       setFilteredPeople(peopleList);
       setDataLoaded(true);
-    
     } catch (error) {
       console.error('Error al cargar personas:', error);
     } finally {
@@ -101,230 +130,246 @@ const AnalyticsScreen = () => {
     }
   };
 
-const normalizeText = (text) => {
-  return text
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
-};
-
-const filterByName = (text) => {
-  setSearch(text);
-  const filtered = people.filter((person) =>
-    normalizeText(person.name).includes(normalizeText(text))
-  );
-  setFilteredPeople(filtered);
-};
-
-// Función para formatear la fecha de manera más amigable
-const formatDate = (date) => {
-  const options = { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
+  const normalizeText = (text) => {
+    return text
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
   };
-  return date.toLocaleDateString('es-ES', options);
-};
 
-// Calcular totales
-const totalAM = attendanceCounts.AM.kids + attendanceCounts.AM.adults;
-const totalPM = attendanceCounts.PM.kids + attendanceCounts.PM.adults;
-const totalDay = totalAM + totalPM;
+  const filterByName = (text) => {
+    setSearch(text);
+    const filtered = people.filter((person) =>
+      normalizeText(person.name).includes(normalizeText(text))
+    );
+    setFilteredPeople(filtered);
+  };
 
-if (loading) {
+  // Función para formatear la fecha de manera más amigable
+  const formatDate = (date) => {
+    const options = { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    };
+    return date.toLocaleDateString('es-ES', options);
+  };
+
+  // Calcular totales
+  const totalAM = attendanceCounts.AM.kids + attendanceCounts.AM.adults;
+  const totalPM = attendanceCounts.PM.kids + attendanceCounts.PM.adults;
+  const totalDay = totalAM + totalPM;
+
+  if (loading) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color="#6366f1" />
+        <Text style={styles.loadingText}>Cargando estadísticas...</Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.loaderContainer}>
-      <ActivityIndicator size="large" color="#6366f1" />
-      <Text style={styles.loadingText}>Cargando estadísticas...</Text>
-    </View>
-  );
-}
-
-return (
-  <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-    {/* Header con gradiente */}
-    <View style={styles.headerContainer}>
-      <Text style={styles.header}>📊 Estadísticas</Text>
-      <Text style={styles.subtitle}>Panel de asistencia diaria</Text>
-    </View>
-
-    {/* Selección de Fecha Mejorada */}
-    <View style={styles.dateSection}>
-      <Text style={styles.sectionTitle}>📅 Fecha seleccionada</Text>
-      <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.datePicker}>
-        <View style={styles.datePickerContent}>
-          <Text style={styles.dateMainText}>
-            {formatDate(selectedDate)}
-          </Text>
-          <Text style={styles.dateSubText}>
-            Toca para cambiar
-          </Text>
-        </View>
-      </TouchableOpacity>
-    </View>
-
-    {showDatePicker && (
-      <DateTimePicker
-        value={selectedDate}
-        mode="date"
-        display="default"
-        onChange={handleDateChange}
-      />
-    )}
-
-    {/* Resumen Total */}
-    <View style={styles.summaryCard}>
-      <Text style={styles.summaryTitle}>Total del día</Text>
-      <Text style={styles.summaryValue}>{totalDay}</Text>
-      <Text style={styles.summarySubtitle}>personas asistieron</Text>
-    </View>
-
-    {/* Tarjetas de estadísticas mejoradas */}
-    <View style={styles.statsGrid}>
-      <View style={styles.sessionCard}>
-        <View style={styles.sessionHeader}>
-          <Text style={styles.sessionIcon}>🌅</Text>
-          <Text style={styles.sessionTitle}>Mañana</Text>
-          <Text style={styles.sessionTotal}>{totalAM}</Text>
-        </View>
-        <View style={styles.sessionStats}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{attendanceCounts.AM.kids}</Text>
-            <Text style={styles.statLabel}>Niños</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{attendanceCounts.AM.adults}</Text>
-            <Text style={styles.statLabel}>Adultos</Text>
-          </View>
-        </View>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* Header con gradiente */}
+      <View style={styles.headerContainer}>
+        <Text style={styles.header}>📊 Estadísticas</Text>
+        <Text style={styles.subtitle}>Panel de asistencia diaria</Text>
       </View>
 
-      <View style={styles.sessionCard}>
-        <View style={styles.sessionHeader}>
-          <Text style={styles.sessionIcon}>🌆</Text>
-          <Text style={styles.sessionTitle}>Tarde</Text>
-          <Text style={styles.sessionTotal}>{totalPM}</Text>
+      {/* Selección de Fecha Mejorada */}
+      <View style={styles.dateSection}>
+        <View style={styles.dateSectionHeader}>
+          <Text style={styles.sectionTitle}>📅 Fecha seleccionada</Text>
+          <TouchableOpacity
+            style={[
+              styles.pdfButton, 
+              (generatingPDF || totalDay === 0) && styles.pdfButtonDisabled
+            ]}
+            onPress={handleGeneratePDF}
+            disabled={generatingPDF || totalDay === 0}
+          >
+            {generatingPDF ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <Text style={styles.pdfButtonText}>📄 PDF</Text>
+            )}
+          </TouchableOpacity>
         </View>
-        <View style={styles.sessionStats}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{attendanceCounts.PM.kids}</Text>
-            <Text style={styles.statLabel}>Niños</Text>
+        
+        <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.datePicker}>
+          <View style={styles.datePickerContent}>
+            <Text style={styles.dateMainText}>
+              {formatDate(selectedDate)}
+            </Text>
+            <Text style={styles.dateSubText}>
+              Toca para cambiar
+            </Text>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{attendanceCounts.PM.adults}</Text>
-            <Text style={styles.statLabel}>Adultos</Text>
-          </View>
-        </View>
-      </View>
-    </View>
-
-    {/* Gráfico mejorado */}
-    <View style={styles.chartSection}>
-      <Text style={styles.sectionTitle}>📈 Gráfico de asistencia</Text>
-      <View style={styles.chartContainer}>
-        <BarChart
-          data={{
-            labels: ['Niños AM', 'Adultos AM', 'Niños PM', 'Adultos PM'],
-            datasets: [
-              {
-                data: [
-                  attendanceCounts.AM.kids,
-                  attendanceCounts.AM.adults,
-                  attendanceCounts.PM.kids,
-                  attendanceCounts.PM.adults,
-                ],
-              },
-            ],
-          }}
-          width={Dimensions.get('window').width - 48}
-          height={220}
-          chartConfig={{
-            backgroundColor: '#ffffff',
-            backgroundGradientFrom: '#ffffff',
-            backgroundGradientTo: '#f8fafc',
-            decimalPlaces: 0,
-            color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
-            labelColor: (opacity = 1) => `rgba(51, 65, 85, ${opacity})`,
-            propsForBackgroundLines: {
-              stroke: '#e2e8f0',
-            },
-            propsForLabels: {
-              fontSize: 12,
-            },
-          }}
-          style={styles.chart}
-          fromZero
-          showValuesOnTopOfBars
-        />
-      </View>
-    </View>
-
-    {/* Sección de personas */}
-    <View style={styles.peopleSection}>
-      <Text style={styles.sectionTitle}>👥 Reportes individuales</Text>
-      
-      {!dataLoaded ? (
-        <TouchableOpacity
-          style={styles.loadButton}
-          onPress={fetchPeople}
-          disabled={loadingPeople}
-        >
-          {loadingPeople ? (
-            <ActivityIndicator size="small" color="#6366f1" />
-          ) : (
-            <>
-              <Text style={styles.loadButtonText}>Cargar lista de personas</Text>
-              <Text style={styles.loadButtonSubtext}>Ver reportes individuales</Text>
-            </>
-          )}
         </TouchableOpacity>
-      ) : (
-        <>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="🔍 Buscar por nombre..."
-            placeholderTextColor="#94a3b8"
-            value={search}
-            onChangeText={filterByName}
-          />
-          
-          {filteredPeople.length > 0 ? (
-            <FlatList
-              data={filteredPeople}
-              keyExtractor={(item) => item.id}
-              showsVerticalScrollIndicator={false}
-              renderItem={({ item }) => (
-                <View style={styles.personCard}>
-                  <View style={styles.personInfo}>
-                    <Text style={styles.personName}>{item.name}</Text>
-                    <Text style={styles.personSubtext}>Ver historial completo</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.viewButton}
-                    onPress={() => handleViewAttendance(item.id)}
-                  >
-                    <Text style={styles.viewButtonText}>Ver</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            />
-          ) : (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateIcon}>👤</Text>
-              <Text style={styles.emptyStateText}>No se encontraron personas</Text>
-              <Text style={styles.emptyStateSubtext}>Verifica tu búsqueda</Text>
-            </View>
-          )}
-        </>
-      )}
-    </View>
-  </ScrollView>
-);
+      </View>
 
-}
+      {showDatePicker && (
+        <DateTimePicker
+          value={selectedDate}
+          mode="date"
+          display="default"
+          onChange={handleDateChange}
+        />
+      )}
+
+      {/* Resumen Total */}
+      <View style={styles.summaryCard}>
+        <Text style={styles.summaryTitle}>Total del día</Text>
+        <Text style={styles.summaryValue}>{totalDay}</Text>
+        <Text style={styles.summarySubtitle}>personas asistieron</Text>
+      </View>
+
+      {/* Tarjetas de estadísticas mejoradas */}
+      <View style={styles.statsGrid}>
+        <View style={styles.sessionCard}>
+          <View style={styles.sessionHeader}>
+            <Text style={styles.sessionIcon}>🌅</Text>
+            <Text style={styles.sessionTitle}>Mañana</Text>
+            <Text style={styles.sessionTotal}>{totalAM}</Text>
+          </View>
+          <View style={styles.sessionStats}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{attendanceCounts.AM.kids}</Text>
+              <Text style={styles.statLabel}>Niños</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{attendanceCounts.AM.adults}</Text>
+              <Text style={styles.statLabel}>Adultos</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.sessionCard}>
+          <View style={styles.sessionHeader}>
+            <Text style={styles.sessionIcon}>🌆</Text>
+            <Text style={styles.sessionTitle}>Tarde</Text>
+            <Text style={styles.sessionTotal}>{totalPM}</Text>
+          </View>
+          <View style={styles.sessionStats}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{attendanceCounts.PM.kids}</Text>
+              <Text style={styles.statLabel}>Niños</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{attendanceCounts.PM.adults}</Text>
+              <Text style={styles.statLabel}>Adultos</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+
+      {/* Gráfico mejorado */}
+      <View style={styles.chartSection}>
+        <Text style={styles.sectionTitle}>📈 Gráfico de asistencia</Text>
+        <View style={styles.chartContainer}>
+          <BarChart
+            data={{
+              labels: ['Niños AM', 'Adultos AM', 'Niños PM', 'Adultos PM'],
+              datasets: [
+                {
+                  data: [
+                    attendanceCounts.AM.kids,
+                    attendanceCounts.AM.adults,
+                    attendanceCounts.PM.kids,
+                    attendanceCounts.PM.adults,
+                  ],
+                },
+              ],
+            }}
+            width={Dimensions.get('window').width - 48}
+            height={220}
+            chartConfig={{
+              backgroundColor: '#ffffff',
+              backgroundGradientFrom: '#ffffff',
+              backgroundGradientTo: '#f8fafc',
+              decimalPlaces: 0,
+              color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
+              labelColor: (opacity = 1) => `rgba(51, 65, 85, ${opacity})`,
+              propsForBackgroundLines: {
+                stroke: '#e2e8f0',
+              },
+              propsForLabels: {
+                fontSize: 12,
+              },
+            }}
+            style={styles.chart}
+            fromZero
+            showValuesOnTopOfBars
+          />
+        </View>
+      </View>
+
+      {/* Sección de personas */}
+      <View style={styles.peopleSection}>
+        <Text style={styles.sectionTitle}>👥 Reportes individuales</Text>
+        
+        {!dataLoaded ? (
+          <TouchableOpacity
+            style={styles.loadButton}
+            onPress={fetchPeople}
+            disabled={loadingPeople}
+          >
+            {loadingPeople ? (
+              <ActivityIndicator size="small" color="#6366f1" />
+            ) : (
+              <>
+                <Text style={styles.loadButtonText}>Cargar lista de personas</Text>
+                <Text style={styles.loadButtonSubtext}>Ver reportes individuales</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        ) : (
+          <>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="🔍 Buscar por nombre..."
+              placeholderTextColor="#94a3b8"
+              value={search}
+              onChangeText={filterByName}
+            />
+            
+            {filteredPeople.length > 0 ? (
+              <FlatList
+                data={filteredPeople}
+                keyExtractor={(item) => item.id}
+                showsVerticalScrollIndicator={false}
+                renderItem={({ item }) => (
+                  <View style={styles.personCard}>
+                    <View style={styles.personInfo}>
+                      <Text style={styles.personName}>{item.name}</Text>
+                      <Text style={styles.personSubtext}>Ver historial completo</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.viewButton}
+                      onPress={() => handleViewAttendance(item.id)}
+                    >
+                      <Text style={styles.viewButtonText}>Ver</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              />
+            ) : (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateIcon}>👤</Text>
+                <Text style={styles.emptyStateText}>No se encontraron personas</Text>
+                <Text style={styles.emptyStateSubtext}>Verifica tu búsqueda</Text>
+              </View>
+            )}
+          </>
+        )}
+      </View>
+    </ScrollView>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -354,11 +399,39 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingBottom: 16,
   },
+  dateSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#334155',
-    marginBottom: 12,
+  },
+  pdfButton: {
+    backgroundColor: '#ef4444',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    minWidth: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  pdfButtonDisabled: {
+    backgroundColor: '#9ca3af',
+    opacity: 0.6,
+  },
+  pdfButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   datePicker: {
     backgroundColor: '#ffffff',

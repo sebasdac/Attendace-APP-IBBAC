@@ -553,8 +553,172 @@ const generateHTMLContent = (monthlyReport, selectedClass, selectedMonth, curren
       
       <!-- Footer -->
       <div class="footer">
-        <p>Reporte generado automáticamente por el Sistema de Asistencia de la IBBAC</p>
+        <p>Reporte generado automáticamente por el Sistema de Asistencia</p>
         <p>© ${currentYear} - Todos los derechos reservados</p>
+      </div>
+    </body>
+    </html>
+  `;
+};
+
+export const generateDailyReportPDF = async (reportData) => {
+  try {
+    if (!RNHTMLtoPDF || !RNHTMLtoPDF.convert) {
+      throw new Error('RNHTMLtoPDF no está disponible.');
+    }
+
+    const htmlContent = generateDailyHTMLContent(reportData);
+    const formattedDate = reportData.date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).replace(/\//g, '-');
+    
+    const fileName = `Reporte_Diario_${formattedDate}`;
+    
+    const options = {
+      html: htmlContent,
+      fileName: fileName,
+      directory: Platform.OS === 'ios' ? 'Documents' : 'Downloads',
+      width: 595,
+      height: 842,
+      padding: 20,
+      base64: true,
+    };
+
+    const file = await RNHTMLtoPDF.convert(options);
+    
+    if (file && (file.filePath || file.base64)) {
+      const pdfFileName = `${fileName}.pdf`;
+      const uri = FileSystem.documentDirectory + pdfFileName;
+      
+      if (file.base64) {
+        await FileSystem.writeAsStringAsync(uri, file.base64, { 
+          encoding: FileSystem.EncodingType.Base64 
+        });
+      } else {
+        const fileContent = await FileSystem.readAsStringAsync(file.filePath, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        await FileSystem.writeAsStringAsync(uri, fileContent, { 
+          encoding: FileSystem.EncodingType.Base64 
+        });
+      }
+      
+      await Sharing.shareAsync(uri, {
+        mimeType: 'application/pdf',
+        dialogTitle: `Reporte Diario - ${formattedDate}`,
+      });
+      
+      Alert.alert('Éxito', 'Reporte diario exportado correctamente');
+      return uri;
+    }
+  } catch (error) {
+    console.error('Error generando PDF diario:', error);
+    Alert.alert('Error', 'No se pudo generar el reporte PDF');
+    throw error;
+  }
+};
+
+const generateDailyHTMLContent = (reportData) => {
+  const { date, attendanceCounts, totalAM, totalPM, totalDay } = reportData;
+  
+  const formattedDate = date.toLocaleDateString('es-ES', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        .header { text-align: center; border-bottom: 3px solid #6366f1; padding-bottom: 20px; margin-bottom: 30px; }
+        .header h1 { color: #6366f1; margin: 0; font-size: 28px; }
+        .date-info { background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 25px; text-align: center; }
+        .stats-grid { display: flex; justify-content: space-around; margin: 30px 0; }
+        .stat-card { text-align: center; background: #f1f5f9; padding: 20px; border-radius: 8px; min-width: 120px; }
+        .stat-number { font-size: 32px; font-weight: bold; color: #6366f1; }
+        .stat-label { color: #64748b; font-size: 14px; margin-top: 5px; }
+        .session-section { margin: 30px 0; }
+        .session-title { font-size: 20px; font-weight: bold; color: #334155; margin-bottom: 15px; }
+        .session-details { display: flex; justify-content: space-around; background: #f8fafc; padding: 20px; border-radius: 8px; }
+        .detail-item { text-align: center; }
+        .detail-number { font-size: 24px; font-weight: bold; color: #6366f1; }
+        .detail-label { color: #64748b; margin-top: 5px; }
+        .total-section { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 25px; border-radius: 12px; text-align: center; margin: 30px 0; }
+        .total-number { font-size: 48px; font-weight: bold; margin: 10px 0; }
+        .footer { margin-top: 40px; text-align: center; color: #64748b; font-size: 12px; border-top: 1px solid #e2e8f0; padding-top: 20px; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>📊 Reporte Diario de Asistencia</h1>
+      </div>
+      
+      <div class="date-info">
+        <h2 style="margin: 0; color: #334155; text-transform: capitalize;">${formattedDate}</h2>
+      </div>
+      
+      <div class="total-section">
+        <h3 style="margin: 0; font-size: 18px;">Total del Día</h3>
+        <div class="total-number">${totalDay}</div>
+        <p style="margin: 0; opacity: 0.9;">personas asistieron</p>
+      </div>
+      
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-number">${totalAM}</div>
+          <div class="stat-label">🌅 Mañana</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">${totalPM}</div>
+          <div class="stat-label">🌆 Tarde</div>
+        </div>
+      </div>
+      
+      <div class="session-section">
+        <div class="session-title">🌅 Sesión de la Mañana</div>
+        <div class="session-details">
+          <div class="detail-item">
+            <div class="detail-number">${attendanceCounts.AM.kids}</div>
+            <div class="detail-label">Niños</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-number">${attendanceCounts.AM.adults}</div>
+            <div class="detail-label">Adultos</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-number">${totalAM}</div>
+            <div class="detail-label">Total</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="session-section">
+        <div class="session-title">🌆 Sesión de la Tarde</div>
+        <div class="session-details">
+          <div class="detail-item">
+            <div class="detail-number">${attendanceCounts.PM.kids}</div>
+            <div class="detail-label">Niños</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-number">${attendanceCounts.PM.adults}</div>
+            <div class="detail-label">Adultos</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-number">${totalPM}</div>
+            <div class="detail-label">Total</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="footer">
+        <p>Reporte generado automáticamente - ${new Date().toLocaleDateString('es-ES')}</p>
       </div>
     </body>
     </html>
