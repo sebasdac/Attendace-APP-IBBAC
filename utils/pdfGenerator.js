@@ -730,11 +730,7 @@ const generateDailyHTMLContent = (reportData) => {
 };
 
 //cumpleaneroooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooos
-// Función principal para generar el reporte de cumpleañeros
-// Función para generar reporte PDF de cumpleañeros
-
-// Función corregida para generar reporte PDF de cumpleañeros
-//SOLUCIÓN DEFINITIVA para el reporte de cumpleañeros
+// SOLUCIÓN ESPECÍFICA PARA WHATSAPP
 export const generateBirthdayReportPDF = async () => {
   try {
     if (!RNHTMLtoPDF || !RNHTMLtoPDF.convert) {
@@ -752,9 +748,9 @@ export const generateBirthdayReportPDF = async () => {
     const currentMonth = new Date().toLocaleDateString('es-ES', { month: 'long' });
     const currentYear = new Date().getFullYear();
     
-    // CORRECCIÓN 1: Asegurar nombre de archivo sin caracteres especiales
-    const cleanMonth = currentMonth.replace(/[^a-zA-Z0-9]/g, '_');
-    const fileName = `Cumpleañeros_${cleanMonth}_${currentYear}`;
+    // CORRECCIÓN 1: Nombre de archivo más compatible con WhatsApp
+    const cleanMonth = currentMonth.replace(/[^a-zA-Z0-9]/g, '');
+    const fileName = `Cumpleaneros_${cleanMonth}_${currentYear}`;
     
     const options = {
       html: htmlContent,
@@ -763,79 +759,66 @@ export const generateBirthdayReportPDF = async () => {
       width: 595,
       height: 842,
       padding: 20,
-      base64: true,
+      base64: false, // IMPORTANTE: Cambiar a false para WhatsApp
     };
 
     console.log('Generando PDF con opciones:', options.fileName);
 
     const file = await RNHTMLtoPDF.convert(options);
     
-    if (file && (file.filePath || file.base64)) {
-      console.log('PDF generado exitosamente:', file);
+    if (file && file.filePath) {
+      console.log('PDF generado exitosamente en:', file.filePath);
       
-      // CORRECCIÓN 2: Crear nombre de archivo más específico
-      const timestamp = new Date().getTime();
-      const pdfFileName = `${fileName}_${timestamp}.pdf`;
-      const uri = FileSystem.documentDirectory + pdfFileName;
+      // CORRECCIÓN 2: Usar el archivo original directamente (sin reescribir)
+      const originalPath = file.filePath;
       
-      // CORRECCIÓN 3: Verificar y limpiar el contenido base64
-      let base64Content = '';
-      if (file.base64) {
-        // Limpiar el base64 de posibles prefijos
-        base64Content = file.base64.replace(/^data:application\/pdf;base64,/, '');
-        console.log('Usando base64 directo, longitud:', base64Content.length);
-      } else if (file.filePath) {
-        console.log('Leyendo desde filePath:', file.filePath);
-        base64Content = await FileSystem.readAsStringAsync(file.filePath, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        console.log('Base64 leído desde archivo, longitud:', base64Content.length);
-      }
+      // CORRECCIÓN 3: Crear una copia con nombre específico para WhatsApp
+      const finalFileName = `${fileName}.pdf`;
+      const finalUri = `${FileSystem.documentDirectory}${finalFileName}`;
       
-      if (!base64Content) {
-        throw new Error('No se pudo obtener el contenido base64 del PDF');
-      }
-      
-      // CORRECCIÓN 4: Escribir el archivo con verificación
-      await FileSystem.writeAsStringAsync(uri, base64Content, { 
-        encoding: FileSystem.EncodingType.Base64 
+      // Copiar el archivo original al directorio de documentos con nombre limpio
+      await FileSystem.copyAsync({
+        from: originalPath,
+        to: finalUri
       });
       
-      // CORRECCIÓN 5: Verificar que el archivo se escribió correctamente
-      const fileInfo = await FileSystem.getInfoAsync(uri);
-      console.log('Información del archivo creado:', fileInfo);
+      // Verificar que el archivo copiado existe y tiene contenido
+      const fileInfo = await FileSystem.getInfoAsync(finalUri);
+      console.log('Información del archivo final:', fileInfo);
       
-      if (!fileInfo.exists) {
-        throw new Error('El archivo no se pudo crear correctamente');
+      if (!fileInfo.exists || fileInfo.size === 0) {
+        throw new Error('El archivo PDF no se creó correctamente');
       }
       
-      // CORRECCIÓN 6: Usar configuración específica para compartir PDF
+      // CORRECCIÓN 4: Configuración específica para WhatsApp
       const shareOptions = {
         mimeType: 'application/pdf',
-        dialogTitle: `Cumpleañeros de ${currentMonth} ${currentYear}`,
-        UTI: 'com.adobe.pdf', // Específico para iOS
+        dialogTitle: `Cumpleañeros ${currentMonth} ${currentYear}`,
+        // Remover UTI ya que puede causar problemas en Android/WhatsApp
       };
       
-      console.log('Compartiendo archivo con opciones:', shareOptions);
-      console.log('URI del archivo:', uri);
+      console.log('Compartiendo archivo:', finalUri);
+      console.log('Tamaño del archivo:', fileInfo.size, 'bytes');
       
-      // CORRECCIÓN 7: Verificar disponibilidad de compartir antes de intentar
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (!isAvailable) {
-        throw new Error('La función de compartir no está disponible en este dispositivo');
-      }
-      
-      await Sharing.shareAsync(uri, shareOptions);
+      await Sharing.shareAsync(finalUri, shareOptions);
       
       Alert.alert('Éxito', 'PDF generado y compartido correctamente');
       
-      return uri;
+      // Limpiar archivo temporal si existe
+      try {
+        if (originalPath !== finalUri) {
+          await FileSystem.deleteAsync(originalPath, { idempotent: true });
+        }
+      } catch (cleanupError) {
+        console.log('No se pudo limpiar archivo temporal:', cleanupError);
+      }
+      
+      return finalUri;
     } else {
-      throw new Error('No se pudo generar el archivo PDF - respuesta vacía');
+      throw new Error('No se pudo generar el archivo PDF');
     }
   } catch (error) {
-    console.error('Error completo generando PDF:', error);
-    console.error('Stack trace:', error.stack);
+    console.error('Error generando PDF:', error);
     
     let errorMessage = 'No se pudo generar el PDF';
     if (error.message.includes('RNHTMLtoPDF no está disponible')) {
@@ -844,8 +827,6 @@ export const generateBirthdayReportPDF = async () => {
       errorMessage = 'No hay permisos para guardar archivos.';
     } else if (error.message.includes('HTML string is required')) {
       errorMessage = 'Error en el contenido del reporte.';
-    } else if (error.message.includes('compartir no está disponible')) {
-      errorMessage = 'La función de compartir no está disponible.';
     }
     
     Alert.alert('Error', errorMessage);
