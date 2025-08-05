@@ -732,6 +732,8 @@ const generateDailyHTMLContent = (reportData) => {
 //cumpleaneroooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooos
 // Función principal para generar el reporte de cumpleañeros
 // Función para generar reporte PDF de cumpleañeros
+
+// Función corregida para generar reporte PDF de cumpleañeros
 export const generateBirthdayReportPDF = async () => {
   try {
     // Verificar que la librería esté disponible
@@ -760,7 +762,7 @@ export const generateBirthdayReportPDF = async () => {
       width: 595, // A4 width in points
       height: 842, // A4 height in points
       padding: 20,
-      base64: true,
+      base64: true, // IMPORTANTE: Igual que los otros reportes
     };
 
     console.log('Generando PDF con opciones:', options.fileName);
@@ -770,6 +772,83 @@ export const generateBirthdayReportPDF = async () => {
     if (file && (file.filePath || file.base64)) {
       console.log('PDF generado exitosamente');
       
+      // CORRECCIÓN: Usar la misma lógica exacta que los otros reportes
+      const pdfFileName = `${fileName}.pdf`;
+      const uri = FileSystem.documentDirectory + pdfFileName;
+      
+      if (file.base64) {
+        // Si tenemos base64, escribir directamente
+        await FileSystem.writeAsStringAsync(uri, file.base64, { 
+          encoding: FileSystem.EncodingType.Base64 
+        });
+      } else {
+        // Si tenemos filePath, leer el archivo y convertir a base64
+        const fileContent = await FileSystem.readAsStringAsync(file.filePath, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        await FileSystem.writeAsStringAsync(uri, fileContent, { 
+          encoding: FileSystem.EncodingType.Base64 
+        });
+      }
+      
+      console.log('Archivo guardado en:', uri);
+      
+      // CORRECCIÓN: Usar expo-sharing para compartir (igual que los otros reportes)
+      await Sharing.shareAsync(uri, {
+        mimeType: 'application/pdf',
+        dialogTitle: `Cumpleañeros de ${currentMonth} ${currentYear}`,
+      });
+      
+      Alert.alert('Éxito', 'PDF generado y compartido correctamente');
+      
+      return uri;
+    } else {
+      throw new Error('No se pudo generar el archivo PDF');
+    }
+  } catch (error) {
+    console.error('Error generando PDF:', error);
+    
+    // Mostrar error más específico
+    let errorMessage = 'No se pudo generar el PDF';
+    if (error.message.includes('RNHTMLtoPDF no está disponible')) {
+      errorMessage = 'La librería PDF no está configurada correctamente. Contacta al desarrollador.';
+    } else if (error.message.includes('Permission')) {
+      errorMessage = 'No hay permisos para guardar archivos. Verifica los permisos de la app.';
+    } else if (error.message.includes('HTML string is required')) {
+      errorMessage = 'Error en el contenido del reporte. Verifica los datos.';
+    }
+    
+    Alert.alert('Error', errorMessage);
+    throw error;
+  }
+};
+export const generateBirthdayReportPDFWithOptions = async () => {
+  try {
+    const birthdayData = await fetchBirthdayData();
+    
+    if (birthdayData.totalBirthdays === 0) {
+      Alert.alert('Sin cumpleañeros', 'No hay cumpleañeros este mes.');
+      return;
+    }
+
+    const htmlContent = generateBirthdayHTMLContent(birthdayData);
+    const currentMonth = new Date().toLocaleDateString('es-ES', { month: 'long' });
+    const currentYear = new Date().getFullYear();
+    const fileName = `Cumpleañeros_${currentMonth}_${currentYear}`;
+    
+    const options = {
+      html: htmlContent,
+      fileName: fileName,
+      directory: Platform.OS === 'ios' ? 'Documents' : 'Downloads',
+      width: 595,
+      height: 842,
+      padding: 20,
+      base64: true,
+    };
+
+    const file = await RNHTMLtoPDF.convert(options);
+    
+    if (file && (file.filePath || file.base64)) {
       const pdfFileName = `${fileName}.pdf`;
       const uri = FileSystem.documentDirectory + pdfFileName;
       
@@ -786,14 +865,28 @@ export const generateBirthdayReportPDF = async () => {
         });
       }
       
-      console.log('Archivo guardado en:', uri);
-      
-      await Sharing.shareAsync(uri, {
-        mimeType: 'application/pdf',
-        dialogTitle: `Cumpleañeros de ${currentMonth} ${currentYear}`,
-      });
-      
-      Alert.alert('Éxito', 'PDF generado y compartido correctamente');
+      // Mostrar opciones al usuario (igual que generatePDFAndShowLocation)
+      Alert.alert(
+        'PDF Generado Exitosamente',
+        `Archivo: ${pdfFileName}`,
+        [
+          { text: 'Solo Guardar', style: 'cancel' },
+          { 
+            text: 'Compartir', 
+            onPress: async () => {
+              try {
+                await Sharing.shareAsync(uri, {
+                  mimeType: 'application/pdf',
+                  dialogTitle: `Cumpleañeros de ${currentMonth} ${currentYear}`,
+                });
+              } catch (shareError) {
+                console.error('Error compartiendo:', shareError);
+                Alert.alert('Error', 'No se pudo compartir el archivo');
+              }
+            }
+          }
+        ]
+      );
       
       return uri;
     } else {
@@ -801,17 +894,7 @@ export const generateBirthdayReportPDF = async () => {
     }
   } catch (error) {
     console.error('Error generando PDF:', error);
-    
-    let errorMessage = 'No se pudo generar el PDF';
-    if (error.message.includes('RNHTMLtoPDF no está disponible')) {
-      errorMessage = 'La librería PDF no está configurada correctamente. Contacta al desarrollador.';
-    } else if (error.message.includes('Permission')) {
-      errorMessage = 'No hay permisos para guardar archivos. Verifica los permisos de la app.';
-    } else if (error.message.includes('HTML string is required')) {
-      errorMessage = 'Error en el contenido del reporte. Verifica los datos.';
-    }
-    
-    Alert.alert('Error', errorMessage);
+    Alert.alert('Error', 'No se pudo generar el PDF');
     throw error;
   }
 };
