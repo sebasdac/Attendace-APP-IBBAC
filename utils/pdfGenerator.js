@@ -734,7 +734,7 @@ const generateDailyHTMLContent = (reportData) => {
 // Función para generar reporte PDF de cumpleañeros
 
 // Función corregida para generar reporte PDF de cumpleañeros
-/ SOLUCIÓN DEFINITIVA para el reporte de cumpleañeros
+//SOLUCIÓN DEFINITIVA para el reporte de cumpleañeros
 export const generateBirthdayReportPDF = async () => {
   try {
     if (!RNHTMLtoPDF || !RNHTMLtoPDF.convert) {
