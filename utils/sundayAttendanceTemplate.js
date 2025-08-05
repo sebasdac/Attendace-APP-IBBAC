@@ -97,8 +97,8 @@ export class SundayAttendanceTemplate {
             position: absolute;
             top: -10px;
             right: 0;
-            width: 60px;
-            height: 60px;
+            width: 80px;
+            height: 80px;
             opacity: 0.9;
           }
           
