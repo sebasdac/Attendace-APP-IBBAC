@@ -4,6 +4,10 @@ import { Alert, Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../database/firebase';
+
+
 export const generateMonthlyReportPDF = async (monthlyReport, selectedClass, selectedMonth, currentYear) => {
   try {
     // Verificar que la librería esté disponible
@@ -725,26 +729,43 @@ const generateDailyHTMLContent = (reportData) => {
   `;
 };
 
-// Función principal para generar el reporte de cumpleañeros
+//cumpleaneroooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooos
+// Función principal con mejor debug
 export const generateBirthdayReportPDF = async () => {
+  console.log('🎂 Iniciando generación de reporte de cumpleañeros...');
+
   try {
+    // Verificar RNHTMLtoPDF
+    console.log('📋 Verificando RNHTMLtoPDF...');
     if (!RNHTMLtoPDF || !RNHTMLtoPDF.convert) {
       throw new Error('RNHTMLtoPDF no está disponible.');
     }
+    console.log('✅ RNHTMLtoPDF disponible');
 
     // Obtener datos de cumpleañeros
+    console.log('📊 Obteniendo datos de cumpleañeros...');
     const birthdayData = await fetchBirthdayData();
-    console.log(birthdayData)
+    console.log('🎉 Datos obtenidos:', {
+      total: birthdayData.totalBirthdays,
+      adults: birthdayData.totalAdults,
+      kids: birthdayData.totalKids
+    });
     
     if (birthdayData.totalBirthdays === 0) {
       Alert.alert('Sin cumpleañeros', 'No hay cumpleañeros este mes.');
       return;
     }
 
+    // Generar HTML
+    console.log('🔧 Generando contenido HTML...');
     const htmlContent = generateBirthdayHTMLContent(birthdayData);
+    console.log('✅ HTML generado, longitud:', htmlContent.length);
+
+    // Configurar archivo
     const currentMonth = new Date().toLocaleDateString('es-ES', { month: 'long' });
     const currentYear = new Date().getFullYear();
     const fileName = `Cumpleañeros_${currentMonth}_${currentYear}`;
+    console.log('📁 Nombre de archivo:', fileName);
     
     const options = {
       html: htmlContent,
@@ -754,19 +775,24 @@ export const generateBirthdayReportPDF = async () => {
       height: 842,
       padding: 20,
       base64: true,
-    }; 
-    
+    };
 
+    // Convertir a PDF
+    console.log('🔄 Convirtiendo HTML a PDF...');
     const file = await RNHTMLtoPDF.convert(options);
+    console.log('📄 Archivo PDF generado:', file ? 'Sí' : 'No');
     
     if (file && (file.filePath || file.base64)) {
+      console.log('💾 Guardando archivo...');
       const pdfFileName = `${fileName}.pdf`;
       const uri = FileSystem.documentDirectory + pdfFileName;
+      console.log('📍 Ruta de guardado:', uri);
       
       if (file.base64) {
         await FileSystem.writeAsStringAsync(uri, file.base64, { 
           encoding: FileSystem.EncodingType.Base64 
         });
+        console.log('✅ Archivo guardado desde base64');
       } else {
         const fileContent = await FileSystem.readAsStringAsync(file.filePath, {
           encoding: FileSystem.EncodingType.Base64,
@@ -774,36 +800,56 @@ export const generateBirthdayReportPDF = async () => {
         await FileSystem.writeAsStringAsync(uri, fileContent, { 
           encoding: FileSystem.EncodingType.Base64 
         });
+        console.log('✅ Archivo guardado desde filePath');
       }
       
+      console.log('📤 Compartiendo archivo...');
       await Sharing.shareAsync(uri, {
         mimeType: 'application/pdf',
         dialogTitle: `Cumpleañeros de ${currentMonth} ${currentYear}`,
       });
       
       Alert.alert('Éxito', 'Reporte de cumpleañeros exportado correctamente');
+      console.log('🎉 Proceso completado exitosamente');
       return uri;
+    } else {
+      throw new Error('No se pudo generar el archivo PDF');
     }
   } catch (error) {
-    console.error('Error generando PDF de cumpleañeros:', error);
-    Alert.alert('Error', 'No se pudo generar el reporte de cumpleañeros');
+    console.error('❌ Error generando PDF de cumpleañeros:', error);
+    console.error('❌ Stack trace:', error.stack);
+    Alert.alert('Error', `No se pudo generar el reporte: ${error.message}`);
     throw error;
   }
 };
 
-// Función para obtener datos de cumpleañeros desde Firebase
+// Función para obtener datos con debug
 const fetchBirthdayData = async () => {
+  console.log('🔍 Iniciando fetchBirthdayData...');
+  
   try {
-    const currentMonth = new Date().getMonth() + 1; // getMonth() devuelve 0-11, necesitamos 1-12
+    const currentMonth = new Date().getMonth() + 1;
+    console.log('📅 Mes actual:', currentMonth);
     
+    // Verificar conexión a Firebase
+    console.log('🔥 Conectando a Firebase...');
+    if (!db) {
+      throw new Error('Firebase db no está inicializado');
+    }
+
     // Obtener datos de adultos
+    console.log('👤 Obteniendo datos de adultos...');
     const peopleRef = collection(db, 'people');
     const peopleSnapshot = await getDocs(peopleRef);
-    const adults = [];
+    console.log('👤 Documentos de adultos encontrados:', peopleSnapshot.size);
     
+    const adults = [];
     peopleSnapshot.forEach((doc) => {
       const person = doc.data();
+      console.log('👤 Procesando adulto:', person.name, 'Cumpleaños:', person.birthDay);
+      
       if (person.birthDay && isBirthdayThisMonth(person.birthDay, currentMonth)) {
+        console.log('🎂 Adulto con cumpleaños este mes:', person.name);
         adults.push({
           name: person.name || 'Nombre no disponible',
           birthDay: person.birthDay,
@@ -814,13 +860,18 @@ const fetchBirthdayData = async () => {
     });
 
     // Obtener datos de niños
+    console.log('👶 Obteniendo datos de niños...');
     const kidsRef = collection(db, 'kids');
     const kidsSnapshot = await getDocs(kidsRef);
-    const kids = [];
+    console.log('👶 Documentos de niños encontrados:', kidsSnapshot.size);
     
+    const kids = [];
     kidsSnapshot.forEach((doc) => {
       const kid = doc.data();
+      console.log('👶 Procesando niño:', kid.name, 'Cumpleaños:', kid.birthDay);
+      
       if (kid.birthDay && isBirthdayThisMonth(kid.birthDay, currentMonth)) {
+        console.log('🎂 Niño con cumpleaños este mes:', kid.name);
         kids.push({
           name: kid.name || 'Nombre no disponible',
           birthDay: kid.birthDay,
@@ -830,14 +881,14 @@ const fetchBirthdayData = async () => {
       }
     });
 
-    // Combinar y ordenar por fecha de cumpleaños
+    // Combinar y ordenar
     const allBirthdays = [...adults, ...kids].sort((a, b) => {
       const dayA = parseInt(a.birthDay.split('/')[0]);
       const dayB = parseInt(b.birthDay.split('/')[0]);
       return dayA - dayB;
     });
 
-    return {
+    const result = {
       adults,
       kids,
       allBirthdays,
@@ -847,25 +898,27 @@ const fetchBirthdayData = async () => {
       currentMonth: new Date().toLocaleDateString('es-ES', { month: 'long' }),
       currentYear: new Date().getFullYear()
     };
+
+    console.log('✅ Datos de cumpleañeros procesados:', result);
+    return result;
+    
   } catch (error) {
-    console.error('Error fetching birthday data:', error);
+    console.error('❌ Error en fetchBirthdayData:', error);
     throw error;
   }
 };
 
-// Función para verificar si un cumpleaños es este mes
+// Resto de funciones igual que antes...
 const isBirthdayThisMonth = (birthDayString, currentMonth) => {
   try {
-    // Formato esperado: DD/MM/YYYY
     const [day, month, year] = birthDayString.split('/').map(Number);
     return month === currentMonth;
   } catch (error) {
-    console.error('Error parsing birthday:', birthDayString, error);
+    console.error('❌ Error parsing birthday:', birthDayString, error);
     return false;
   }
 };
 
-// Función para calcular la edad
 const calculateAge = (birthDayString) => {
   try {
     const [day, month, year] = birthDayString.split('/').map(Number);
@@ -880,7 +933,7 @@ const calculateAge = (birthDayString) => {
     
     return age;
   } catch (error) {
-    console.error('Error calculating age:', error);
+    console.error('❌ Error calculating age:', error);
     return 'N/A';
   }
 };
@@ -1108,3 +1161,5 @@ const generateBirthdayHTMLContent = (birthdayData) => {
     </html>
   `;
 };
+
+//pruebaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
