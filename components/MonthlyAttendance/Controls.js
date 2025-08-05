@@ -1,3 +1,4 @@
+// Controls.js
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -9,125 +10,180 @@ export const Controls = ({
   onClassPress,
   onMonthPress,
   onReportTypeChange,
-}) => (
-  <View style={styles.controlsSection}>
-    <View style={styles.controlsRow}>
-      <TouchableOpacity
-        style={[styles.selectorCard, { flex: 1, marginRight: 8 }]}
-        onPress={onClassPress}
-      >
-        <Text style={styles.selectorLabel}>Clase</Text>
-        <Text style={styles.selectorValue}>
-          {selectedClass || "Seleccionar"}
-        </Text>
-        <Icon name="keyboard-arrow-down" size={20} color="#64748b" />
-      </TouchableOpacity>
+  onDownloadTemplate, // Nueva prop
+  currentYear
+}) => {
+  return (
+    <View style={styles.container}>
+      {/* Selectores de clase y mes */}
+      <View style={styles.selectorsRow}>
+        <TouchableOpacity style={styles.selector} onPress={onClassPress}>
+          <View style={styles.selectorHeader}>
+            <Icon name="school" size={16} color="#6366f1" />
+            <Text style={styles.selectorLabel}>Clase</Text>
+          </View>
+          <Text style={styles.selectorValue}>
+            {selectedClass || 'Seleccionar'}
+          </Text>
+          <Icon name="keyboard-arrow-down" size={20} color="#64748b" />
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[styles.selectorCard, { flex: 1, marginLeft: 8 }]}
-        onPress={onMonthPress}
-      >
-        <Text style={styles.selectorLabel}>Mes</Text>
-        <Text style={styles.selectorValue}>{selectedMonth}</Text>
-        <Icon name="keyboard-arrow-down" size={20} color="#64748b" />
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity style={styles.selector} onPress={onMonthPress}>
+          <View style={styles.selectorHeader}>
+            <Icon name="calendar-today" size={16} color="#6366f1" />
+            <Text style={styles.selectorLabel}>Mes</Text>
+          </View>
+          <Text style={styles.selectorValue}>
+            {selectedMonth ? `${selectedMonth} ${currentYear}` : 'Seleccionar'}
+          </Text>
+          <Icon name="keyboard-arrow-down" size={20} color="#64748b" />
+        </TouchableOpacity>
+      </View>
 
-    <View style={styles.reportTypeToggle}>
-      <TouchableOpacity
-        style={[
-          styles.toggleButton,
-          reportType === 'overview' && styles.toggleButtonActive
-        ]}
-        onPress={() => onReportTypeChange('overview')}
-      >
-        <Text style={[
-          styles.toggleText,
-          reportType === 'overview' && styles.toggleTextActive
-        ]}>
-          📊 Resumen
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[
-          styles.toggleButton,
-          reportType === 'detailed' && styles.toggleButtonActive
-        ]}
-        onPress={() => onReportTypeChange('detailed')}
-      >
-        <Text style={[
-          styles.toggleText,
-          reportType === 'detailed' && styles.toggleTextActive
-        ]}>
-          📋 Detallado
-        </Text>
-      </TouchableOpacity>
+      {/* Botón de plantilla - solo visible si hay clase y mes seleccionados */}
+      {selectedClass && selectedMonth && (
+        <TouchableOpacity 
+          style={styles.templateButton}
+          onPress={() => onDownloadTemplate(selectedMonth, selectedClass)}
+        >
+          <Icon name="file-download" size={18} color="#10b981" />
+          <Text style={styles.templateButtonText}>Descargar Plantilla</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Toggles de tipo de reporte */}
+      <View style={styles.reportTypeContainer}>
+        <TouchableOpacity
+          style={[
+            styles.reportTypeButton,
+            reportType === 'overview' && styles.reportTypeButtonActive
+          ]}
+          onPress={() => onReportTypeChange('overview')}
+        >
+          <View style={styles.reportTypeContent}>
+            <Icon 
+              name="assessment" 
+              size={16} 
+              color={reportType === 'overview' ? '#334155' : '#64748b'} 
+            />
+            <Text style={[
+              styles.reportTypeText,
+              reportType === 'overview' && styles.reportTypeTextActive
+            ]}>
+              Resumen
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.reportTypeButton,
+            reportType === 'detailed' && styles.reportTypeButtonActive
+          ]}
+          onPress={() => onReportTypeChange('detailed')}
+        >
+          <View style={styles.reportTypeContent}>
+            <Icon 
+              name="list-alt" 
+              size={16} 
+              color={reportType === 'detailed' ? '#334155' : '#64748b'} 
+            />
+            <Text style={[
+              styles.reportTypeText,
+              reportType === 'detailed' && styles.reportTypeTextActive
+            ]}>
+              Detallado
+            </Text>
+          </View>
+        </TouchableOpacity>
+      </View>
     </View>
-  </View>
-);
+  );
+};
 
 const styles = StyleSheet.create({
-  controlsSection: {
+  container: {
     paddingHorizontal: 24,
-    paddingTop: 24,
+    paddingVertical: 16,
+    gap: 16,
   },
-  controlsRow: {
+  selectorsRow: {
     flexDirection: 'row',
-    marginBottom: 16,
+    gap: 12,
   },
-  selectorCard: {
+  selector: {
+    flex: 1,
     backgroundColor: '#ffffff',
-    borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  selectorHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 6,
+    marginBottom: 4,
   },
   selectorLabel: {
     fontSize: 12,
     color: '#64748b',
-    position: 'absolute',
-    top: 8,
-    left: 16,
   },
   selectorValue: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 14,
     color: '#334155',
-    marginTop: 12,
+    fontWeight: '500',
   },
-  reportTypeToggle: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 4,
+  templateButton: {
     flexDirection: 'row',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  toggleButton: {
-    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 12,
-    alignItems: 'center',
+    borderRadius: 8,
+    gap: 8,
   },
-  toggleButtonActive: {
-    backgroundColor: '#6366f1',
-  },
-  toggleText: {
+  templateButtonText: {
+    color: '#10b981',
     fontSize: 14,
     fontWeight: '600',
-    color: '#64748b',
   },
-  toggleTextActive: {
-    color: '#ffffff',
+  reportTypeContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 8,
+    padding: 4,
+  },
+  reportTypeButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  reportTypeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  reportTypeButtonActive: {
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  reportTypeText: {
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  reportTypeTextActive: {
+    color: '#334155',
+    fontWeight: '600',
   },
 });

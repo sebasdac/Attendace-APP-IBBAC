@@ -1,7 +1,6 @@
-
 // MonthlyAttendanceScreen.js (Componente principal refactorizado)
 import React, { useState, useEffect } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View, Alert } from "react-native";
 import { useMonthlyAttendance } from "../../hooks/useMonthlyAttendance";
 import { Header } from "../../components/MonthlyAttendance/Header";
 import { Controls } from "../../components/MonthlyAttendance/Controls";
@@ -48,28 +47,79 @@ const MonthlyAttendanceScreen = ({ navigation }) => {
     }
   }, [selectedClass, selectedMonth]);
 
+  // Función para manejar la descarga de plantilla PDF
+  const handleDownloadTemplate = async (selectedMonth, selectedClass) => {
+    try {
+      if (!selectedMonth || !selectedClass) {
+        Alert.alert('Error', 'Por favor selecciona una clase primero');
+        return;
+      }
+
+      // Mostrar loading
+      Alert.alert(
+        'Generando Plantilla...',
+        'Por favor espera mientras se genera la plantilla PDF de domingos',
+        [],
+        { cancelable: false }
+      );
+
+      // Importar las funciones
+      const { generateSundayAttendanceTemplate } = require('../../utils/sundayAttendanceTemplate');
+      const { getStudentsForClass, getStudentsFromMonthlyReport } = require('../../utils/studentsHelper');
+      
+      // Intentar obtener estudiantes del reporte actual si existe
+      let students = [];
+      if (monthlyReport) {
+        students = getStudentsFromMonthlyReport(monthlyReport);
+      }
+      
+      // Si no hay estudiantes del reporte, obtener de otra fuente
+      if (students.length === 0) {
+        students = await getStudentsForClass(selectedClass, monthlyReport);
+      }
+      
+      if (!students || students.length === 0) {
+        Alert.alert('Advertencia', 'No se encontraron estudiantes para esta clase. Se creará una plantilla con estudiantes de ejemplo.');
+        students = [`Estudiante 1`, `Estudiante 2`, `Estudiante 3`, `Estudiante 4`, `Estudiante 5`];
+      }
+
+      const filePath = await generateSundayAttendanceTemplate(
+        selectedClass,
+        selectedMonth,
+        currentYear || new Date().getFullYear(),
+        students
+      );
+
+      if (filePath) {
+        console.log('Plantilla generada en:', filePath);
+      }
+      
+    } catch (error) {
+      console.error('Error generando plantilla:', error);
+      Alert.alert('Error', 'No se pudo generar la plantilla PDF. Verifica los permisos de almacenamiento.');
+    }
+  };
+
   const renderOverviewReport = () => {
     if (!monthlyReport) return null;
 
     return (
       <View style={styles.reportSection}>
-    
         <StatsCards monthlyReport={monthlyReport} />
         <WeeklyChart weeklyStats={monthlyReport.weeklyStats} />
         <TopAttendees topAttendees={monthlyReport.topAttendees} />
-            {selectedClass && selectedMonth && monthlyReport && (
-            <View style={styles.pdfButtonContainer}>
-              <PDFButton
-                monthlyReport={monthlyReport}
-                selectedClass={selectedClass}
-                selectedMonth={selectedMonth}
-                currentYear={currentYear}
-                disabled={loading}
-                />
-                </View>
-              )}
+        {selectedClass && selectedMonth && monthlyReport && (
+          <View style={styles.pdfButtonContainer}>
+            <PDFButton
+              monthlyReport={monthlyReport}
+              selectedClass={selectedClass}
+              selectedMonth={selectedMonth}
+              currentYear={currentYear}
+              disabled={loading}
+            />
+          </View>
+        )}
       </View>
-      
     );
   };
 
@@ -111,6 +161,8 @@ const MonthlyAttendanceScreen = ({ navigation }) => {
         onClassPress={() => setShowClassModal(true)}
         onMonthPress={() => setShowMonthModal(true)}
         onReportTypeChange={setReportType}
+        onDownloadTemplate={handleDownloadTemplate}
+        currentYear={currentYear}
       />
 
       {loading ? (
@@ -138,6 +190,12 @@ const MonthlyAttendanceScreen = ({ navigation }) => {
         selectedValue={selectedMonth}
         onSelect={setSelectedMonth}
         renderItem={(month) => `${month} ${currentYear}`}
+        
+        // Props para el botón de plantilla PDF
+        showTemplateButton={true}
+        onDownloadTemplate={handleDownloadTemplate}
+        templateButtonText="Descargar Plantilla de Asistencia"
+        selectedClass={selectedClass}
       />
     </ScrollView>
   );
@@ -162,6 +220,5 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
 });
-
 
 export default MonthlyAttendanceScreen;
