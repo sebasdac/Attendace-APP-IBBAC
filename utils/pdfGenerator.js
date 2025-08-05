@@ -730,69 +730,53 @@ const generateDailyHTMLContent = (reportData) => {
 };
 
 //cumpleaneroooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooos
-// Función principal con mejor debug
+// Función principal para generar el reporte de cumpleañeros
+// Función para generar reporte PDF de cumpleañeros
 export const generateBirthdayReportPDF = async () => {
-  console.log('🎂 Iniciando generación de reporte de cumpleañeros...');
-
   try {
-    // Verificar RNHTMLtoPDF
-    console.log('📋 Verificando RNHTMLtoPDF...');
+    // Verificar que la librería esté disponible
     if (!RNHTMLtoPDF || !RNHTMLtoPDF.convert) {
-      throw new Error('RNHTMLtoPDF no está disponible.');
+      throw new Error('RNHTMLtoPDF no está disponible. Verifica la instalación de la librería.');
     }
-    console.log('✅ RNHTMLtoPDF disponible');
 
     // Obtener datos de cumpleañeros
-    console.log('📊 Obteniendo datos de cumpleañeros...');
     const birthdayData = await fetchBirthdayData();
-    console.log('🎉 Datos obtenidos:', {
-      total: birthdayData.totalBirthdays,
-      adults: birthdayData.totalAdults,
-      kids: birthdayData.totalKids
-    });
     
     if (birthdayData.totalBirthdays === 0) {
       Alert.alert('Sin cumpleañeros', 'No hay cumpleañeros este mes.');
       return;
     }
 
-    // Generar HTML
-    console.log('🔧 Generando contenido HTML...');
     const htmlContent = generateBirthdayHTMLContent(birthdayData);
-    console.log('✅ HTML generado, longitud:', htmlContent.length);
-
-    // Configurar archivo
     const currentMonth = new Date().toLocaleDateString('es-ES', { month: 'long' });
     const currentYear = new Date().getFullYear();
+    
     const fileName = `Cumpleañeros_${currentMonth}_${currentYear}`;
-    console.log('📁 Nombre de archivo:', fileName);
     
     const options = {
       html: htmlContent,
       fileName: fileName,
       directory: Platform.OS === 'ios' ? 'Documents' : 'Downloads',
-      width: 595,
-      height: 842,
+      width: 595, // A4 width in points
+      height: 842, // A4 height in points
       padding: 20,
       base64: true,
     };
 
-    // Convertir a PDF
-    console.log('🔄 Convirtiendo HTML a PDF...');
+    console.log('Generando PDF con opciones:', options.fileName);
+
     const file = await RNHTMLtoPDF.convert(options);
-    console.log('📄 Archivo PDF generado:', file ? 'Sí' : 'No');
     
     if (file && (file.filePath || file.base64)) {
-      console.log('💾 Guardando archivo...');
+      console.log('PDF generado exitosamente');
+      
       const pdfFileName = `${fileName}.pdf`;
       const uri = FileSystem.documentDirectory + pdfFileName;
-      console.log('📍 Ruta de guardado:', uri);
       
       if (file.base64) {
         await FileSystem.writeAsStringAsync(uri, file.base64, { 
           encoding: FileSystem.EncodingType.Base64 
         });
-        console.log('✅ Archivo guardado desde base64');
       } else {
         const fileContent = await FileSystem.readAsStringAsync(file.filePath, {
           encoding: FileSystem.EncodingType.Base64,
@@ -800,56 +784,55 @@ export const generateBirthdayReportPDF = async () => {
         await FileSystem.writeAsStringAsync(uri, fileContent, { 
           encoding: FileSystem.EncodingType.Base64 
         });
-        console.log('✅ Archivo guardado desde filePath');
       }
       
-      console.log('📤 Compartiendo archivo...');
+      console.log('Archivo guardado en:', uri);
+      
       await Sharing.shareAsync(uri, {
         mimeType: 'application/pdf',
         dialogTitle: `Cumpleañeros de ${currentMonth} ${currentYear}`,
       });
       
-      Alert.alert('Éxito', 'Reporte de cumpleañeros exportado correctamente');
-      console.log('🎉 Proceso completado exitosamente');
+      Alert.alert('Éxito', 'PDF generado y compartido correctamente');
+      
       return uri;
     } else {
       throw new Error('No se pudo generar el archivo PDF');
     }
   } catch (error) {
-    console.error('❌ Error generando PDF de cumpleañeros:', error);
-    console.error('❌ Stack trace:', error.stack);
-    Alert.alert('Error', `No se pudo generar el reporte: ${error.message}`);
+    console.error('Error generando PDF:', error);
+    
+    let errorMessage = 'No se pudo generar el PDF';
+    if (error.message.includes('RNHTMLtoPDF no está disponible')) {
+      errorMessage = 'La librería PDF no está configurada correctamente. Contacta al desarrollador.';
+    } else if (error.message.includes('Permission')) {
+      errorMessage = 'No hay permisos para guardar archivos. Verifica los permisos de la app.';
+    } else if (error.message.includes('HTML string is required')) {
+      errorMessage = 'Error en el contenido del reporte. Verifica los datos.';
+    }
+    
+    Alert.alert('Error', errorMessage);
     throw error;
   }
 };
 
-// Función para obtener datos con debug
+// Función para obtener datos de cumpleañeros desde Firebase
 const fetchBirthdayData = async () => {
-  console.log('🔍 Iniciando fetchBirthdayData...');
-  
   try {
     const currentMonth = new Date().getMonth() + 1;
-    console.log('📅 Mes actual:', currentMonth);
     
-    // Verificar conexión a Firebase
-    console.log('🔥 Conectando a Firebase...');
     if (!db) {
       throw new Error('Firebase db no está inicializado');
     }
 
     // Obtener datos de adultos
-    console.log('👤 Obteniendo datos de adultos...');
     const peopleRef = collection(db, 'people');
     const peopleSnapshot = await getDocs(peopleRef);
-    console.log('👤 Documentos de adultos encontrados:', peopleSnapshot.size);
     
     const adults = [];
     peopleSnapshot.forEach((doc) => {
       const person = doc.data();
-      console.log('👤 Procesando adulto:', person.name, 'Cumpleaños:', person.birthDay);
-      
       if (person.birthDay && isBirthdayThisMonth(person.birthDay, currentMonth)) {
-        console.log('🎂 Adulto con cumpleaños este mes:', person.name);
         adults.push({
           name: person.name || 'Nombre no disponible',
           birthDay: person.birthDay,
@@ -860,18 +843,13 @@ const fetchBirthdayData = async () => {
     });
 
     // Obtener datos de niños
-    console.log('👶 Obteniendo datos de niños...');
     const kidsRef = collection(db, 'kids');
     const kidsSnapshot = await getDocs(kidsRef);
-    console.log('👶 Documentos de niños encontrados:', kidsSnapshot.size);
     
     const kids = [];
     kidsSnapshot.forEach((doc) => {
       const kid = doc.data();
-      console.log('👶 Procesando niño:', kid.name, 'Cumpleaños:', kid.birthDay);
-      
       if (kid.birthDay && isBirthdayThisMonth(kid.birthDay, currentMonth)) {
-        console.log('🎂 Niño con cumpleaños este mes:', kid.name);
         kids.push({
           name: kid.name || 'Nombre no disponible',
           birthDay: kid.birthDay,
@@ -888,7 +866,7 @@ const fetchBirthdayData = async () => {
       return dayA - dayB;
     });
 
-    const result = {
+    return {
       adults,
       kids,
       allBirthdays,
@@ -898,27 +876,24 @@ const fetchBirthdayData = async () => {
       currentMonth: new Date().toLocaleDateString('es-ES', { month: 'long' }),
       currentYear: new Date().getFullYear()
     };
-
-    console.log('✅ Datos de cumpleañeros procesados:', result);
-    return result;
-    
   } catch (error) {
-    console.error('❌ Error en fetchBirthdayData:', error);
+    console.error('Error en fetchBirthdayData:', error);
     throw error;
   }
 };
 
-// Resto de funciones igual que antes...
+// Función para verificar si un cumpleaños es este mes
 const isBirthdayThisMonth = (birthDayString, currentMonth) => {
   try {
     const [day, month, year] = birthDayString.split('/').map(Number);
     return month === currentMonth;
   } catch (error) {
-    console.error('❌ Error parsing birthday:', birthDayString, error);
+    console.error('Error parsing birthday:', birthDayString, error);
     return false;
   }
 };
 
+// Función para calcular la edad
 const calculateAge = (birthDayString) => {
   try {
     const [day, month, year] = birthDayString.split('/').map(Number);
@@ -933,7 +908,7 @@ const calculateAge = (birthDayString) => {
     
     return age;
   } catch (error) {
-    console.error('❌ Error calculating age:', error);
+    console.error('Error calculating age:', error);
     return 'N/A';
   }
 };
@@ -1051,9 +1026,6 @@ const generateBirthdayHTMLContent = (birthdayData) => {
           padding: 12px; 
           border-bottom: 1px solid #e2e8f0; 
         }
-        .birthday-table tr:hover { 
-          background-color: #f8fafc; 
-        }
         .section-title {
           font-size: 20px;
           font-weight: bold;
@@ -1061,26 +1033,6 @@ const generateBirthdayHTMLContent = (birthdayData) => {
           margin: 30px 0 15px 0;
           border-left: 4px solid #6366f1;
           padding-left: 15px;
-        }
-        .empty-state {
-          text-align: center;
-          padding: 40px;
-          color: #64748b;
-          background: #f8fafc;
-          border-radius: 8px;
-          margin: 20px 0;
-        }
-        .empty-state-icon {
-          font-size: 48px;
-          margin-bottom: 15px;
-        }
-        .footer { 
-          margin-top: 40px; 
-          text-align: center; 
-          color: #64748b; 
-          font-size: 12px; 
-          border-top: 2px solid #e2e8f0; 
-          padding-top: 20px; 
         }
         .celebration-banner {
           background: linear-gradient(45deg, #fbbf24, #f59e0b);
@@ -1090,6 +1042,14 @@ const generateBirthdayHTMLContent = (birthdayData) => {
           text-align: center;
           margin: 20px 0;
           font-weight: bold;
+        }
+        .footer { 
+          margin-top: 40px; 
+          text-align: center; 
+          color: #64748b; 
+          font-size: 12px; 
+          border-top: 2px solid #e2e8f0; 
+          padding-top: 20px; 
         }
       </style>
     </head>
@@ -1105,48 +1065,40 @@ const generateBirthdayHTMLContent = (birthdayData) => {
         </p>
       </div>
       
-      ${totalBirthdays > 0 ? `
-        <div class="celebration-banner">
-          🎉 ¡Celebremos juntos estos cumpleaños especiales! 🎉
+      <div class="celebration-banner">
+        🎉 ¡Celebremos juntos estos cumpleaños especiales! 🎉
+      </div>
+      
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-number">${totalBirthdays}</div>
+          <div class="stat-label">🎂 Total</div>
         </div>
-        
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-number">${totalBirthdays}</div>
-            <div class="stat-label">🎂 Total</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-number">${totalAdults}</div>
-            <div class="stat-label">👤 Adultos</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-number">${totalKids}</div>
-            <div class="stat-label">👶 Niños</div>
-          </div>
+        <div class="stat-card">
+          <div class="stat-number">${totalAdults}</div>
+          <div class="stat-label">👤 Adultos</div>
         </div>
-        
-        <div class="section-title">📋 Lista de Cumpleañeros</div>
-        
-        <table class="birthday-table">
-          <thead>
-            <tr>
-              <th>👤 Nombre</th>
-              <th>📅 Fecha de Nacimiento</th>
-              <th>🎂 Edad</th>
-              <th>👥 Categoría</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${birthdayRows}
-          </tbody>
-        </table>
-      ` : `
-        <div class="empty-state">
-          <div class="empty-state-icon">🎂</div>
-          <h3>No hay cumpleañeros este mes</h3>
-          <p>¡Pero siempre hay motivos para celebrar!</p>
+        <div class="stat-card">
+          <div class="stat-number">${totalKids}</div>
+          <div class="stat-label">👶 Niños</div>
         </div>
-      `}
+      </div>
+      
+      <div class="section-title">📋 Lista de Cumpleañeros</div>
+      
+      <table class="birthday-table">
+        <thead>
+          <tr>
+            <th>👤 Nombre</th>
+            <th>📅 Fecha de Nacimiento</th>
+            <th>🎂 Edad</th>
+            <th>👥 Categoría</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${birthdayRows}
+        </tbody>
+      </table>
       
       <div class="footer">
         <p>🎉 Reporte de cumpleañeros generado automáticamente</p>
@@ -1161,5 +1113,3 @@ const generateBirthdayHTMLContent = (birthdayData) => {
     </html>
   `;
 };
-
-//pruebaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
